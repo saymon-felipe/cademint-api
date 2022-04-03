@@ -18,7 +18,7 @@ app.use(cors());
 require('dotenv').config();
 
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', "*"); //process.env.URL_SITE
+    res.header('Access-Control-Allow-Origin', process.env.URL_SITE);
     res.header(
         'Access-Control-Allow-Headers',
         'Content-Type',
