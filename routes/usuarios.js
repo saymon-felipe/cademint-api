@@ -487,56 +487,98 @@ router.post("/exclude_user", login, (req, res, next) => {
         [req.usuario.id_usuario],
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) };
+                
+                conn.query(
+                    'select * from os_groups where group_owner = ?',
+                    [req.usuario.id_usuario],
+                    (err2, results2) => {
+                        if (err2) { return res.status(500).send({ error: err2 }) };
 
-                let user_groups = results[0].user_groups;
-                if (user_groups.indexOf(",") != -1) {
-                    user_groups = user_groups.split(",");
-                } else {
-                    user_groups = user_groups.split();
-                }
-
-                for (let i = 0; i < user_groups.length; i++) {
-                    conn.query('select group_members from os_groups where groups_id = ?',
-                    [user_groups[i]],
-                        (err2, results2) => {
-                            if (err2) { return res.status(500).send({ error: err2 }) };
-
-                            let group_members = results2[0].group_members, new_group_members;
-                            if (group_members.indexOf(",") != -1) {
-                                new_group_members = group_members.split(",");
-                                new_group_members.splice(new_group_members.findIndex(obj => obj == user_groups[i]), 1);
-                                new_group_members = new_group_members.join(",");
-                            } else {
-                                new_group_members = "";
-                            }
-                            conn.query('update os_groups set group_members = ? where groups_id = ?',
-                            [new_group_members, user_groups[i]],
+                        let target_group = results2[0].group_members;
+                        let target_group_id = results2[0].groups_id;
+                        let current_group_members;
+                        if (target_group.group_members.indexOf(",") != -1) {
+                            current_group_members = target_group.group_members.split(",");
+                        } else {
+                            current_group_members = target_group.group_members.split();
+                        }
+                        for (let i = 0; i < current_group_members.length; i++) {
+                            conn.query('select user_groups from usuarios where id_usuario = ?',
+                            [target_group.group_members[i]],
                                 (err3, results3) => {
                                     if (err3) { return res.status(500).send({ error: err3 }) };
+
+                                    let current_user_groups = results3[0].user_groups;
+                                    let current_user_groups_array;
+                                    if (current_user_groups.indexOf(",") != -1) {
+                                        current_user_groups_array = current_user_groups.split(",").splice(current_user_groups.indexOf(target_group_id), 1);
+                                        current_user_groups_array = current_user_groups_array.join(",");
+                                    } 
+
+                                    conn.query('update usuarios set user_groups = ? where id_usuario = ?',
+                                    [current_user_groups_array, current_group_members[i]],
+                                        (err4, results4) => {
+                                            if (err4) { return res.status(500).send({ error: err4 }) };
+                                            
+                                        }
+                                    )
                                 }
                             )
                         }
-                    )
-                }
+
+                        setTimeout(() => {
+                            let user_groups = results[0].user_groups;
+                            if (user_groups.indexOf(",") != -1) {
+                                user_groups = user_groups.split(",");
+                            } else {
+                                user_groups = user_groups.split();
+                            }
+
+                            for (let i = 0; i < user_groups.length; i++) {
+                                conn.query('select group_members from os_groups where groups_id = ?',
+                                [user_groups[i]],
+                                    (err2, results2) => {
+                                        if (err2) { return res.status(500).send({ error: err2 }) };
+
+                                        let group_members = results2[0].group_members, new_group_members;
+                                        if (group_members.indexOf(",") != -1) {
+                                            new_group_members = group_members.split(",");
+                                            new_group_members.splice(new_group_members.findIndex(obj => obj == user_groups[i]), 1);
+                                            new_group_members = new_group_members.join(",");
+                                        } else {
+                                            new_group_members = "";
+                                        }
+                                        conn.query('update os_groups set group_members = ? where groups_id = ?',
+                                        [new_group_members, user_groups[i]],
+                                            (err3, results3) => {
+                                                if (err3) { return res.status(500).send({ error: err3 }) };
+
+                                                conn.query('update os_groups set group_members = ? where groups_id = ?',
+                                                [new_group_members, user_groups[i]],
+                                                    (err4, results4) => {
+                                                        if (err4) { return res.status(500).send({ error: err4 }) };
+                                                    }
+                                                )
+                                            }
+                                        )
+                                    }
+                                )
+                            }
+                        }, 1000);
+                    }
+                );
+                
                 setTimeout(() => {
                     conn.query(
                         'delete from usuarios where id_usuario = ?',
                         [req.usuario.id_usuario],
                         (err2, results2) => {
                             if (err2) { return res.status(500).send({ error: err2 }) };
-                            conn.query(
-                                'delete from os_groups where group_owner = ?',
-                                [req.usuario.id_usuario],
-                                (err3, results3) => {
-                                    if (err3) { return res.status(500).send({ error: err3 }) }
-                                    conn.release();
-                                    const response = {
-                                        message: "Usuário excluído com sucesso!"
-                                    }
-                                    return res.status(200).send(response);
-                                }
-                            );
-                            
+                            conn.release();
+                            const response = {
+                                message: "Usuário excluído com sucesso!"
+                            }
+                            return res.status(200).send(response);
                         }
                     );
                 }, 2 * 1000);
