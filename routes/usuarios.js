@@ -494,17 +494,17 @@ router.post("/exclude_user", login, (req, res, next) => {
                     (err2, results2) => {
                         if (err2) { return res.status(500).send({ error: err2 }) };
 
-                        let target_group = results2[0].group_members;
+                        let target_group_members = results2[0].group_members;
                         let target_group_id = results2[0].groups_id;
                         let current_group_members;
-                        if (target_group.group_members.indexOf(",") != -1) {
-                            current_group_members = target_group.group_members.split(",");
+                        if (target_group_members.indexOf(",") != -1) {
+                            current_group_members = target_group_members.split(",");
                         } else {
-                            current_group_members = target_group.group_members.split();
+                            current_group_members = target_group_members.split();
                         }
                         for (let i = 0; i < current_group_members.length; i++) {
                             conn.query('select user_groups from usuarios where id_usuario = ?',
-                            [target_group.group_members[i]],
+                            [target_group_members[i]],
                                 (err3, results3) => {
                                     if (err3) { return res.status(500).send({ error: err3 }) };
 
@@ -564,24 +564,30 @@ router.post("/exclude_user", login, (req, res, next) => {
                                     }
                                 )
                             }
+                            setTimeout(() => {
+                                conn.query(
+                                    'delete from usuarios where id_usuario = ?',
+                                    [req.usuario.id_usuario],
+                                    (err3, results3) => {
+                                        if (err3) { return res.status(500).send({ error: err3 }) };
+
+                                        conn.query('delete from os_groups where group_owner = ?',
+                                        [req.usuario.id_usuario],
+                                            (err4, results4) => {
+                                                if (err4) { return res.status(500).send({ error: err4 }) };
+                                                conn.release();
+                                                const response = {
+                                                    message: "Usuário excluído com sucesso!"
+                                                }
+                                                return res.status(200).send(response);
+                                            }
+                                        )
+                                    }
+                                );
+                            }, 1000);
                         }, 1000);
                     }
                 );
-                
-                setTimeout(() => {
-                    conn.query(
-                        'delete from usuarios where id_usuario = ?',
-                        [req.usuario.id_usuario],
-                        (err2, results2) => {
-                            if (err2) { return res.status(500).send({ error: err2 }) };
-                            conn.release();
-                            const response = {
-                                message: "Usuário excluído com sucesso!"
-                            }
-                            return res.status(200).send(response);
-                        }
-                    );
-                }, 2 * 1000);
             }
         )
     });
