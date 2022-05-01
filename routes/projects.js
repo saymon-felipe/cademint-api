@@ -97,9 +97,10 @@ router.get("/", (req, res, next) => {
 
 router.post("/", (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send({ error: error }) };
+        let group_members = "1,2," + req.body.id_usuario;
         conn.query(`insert into os_groups (group_name, group_members, group_owner) values (?, ?, ?)`, 
-            [req.body.group_name, req.body.id_usuario, req.body.id_usuario],
+            [req.body.group_name, group_members, req.body.id_usuario],
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) };
 

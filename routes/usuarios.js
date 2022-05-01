@@ -381,20 +381,6 @@ router.post("/update_groups", (req, res, next) => {
     });
 });
 
-router.post("/exclude_group", login, (req, res, next) => {
-    let group_id = req.body.group_id;
-    let user_id = req.body.user_id;
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
-        conn.query('select user_groups from usuarios where id_usuario = ?',
-        [user_id],
-            (err, results) => {
-
-            }
-        )
-    });
-});
-
 router.post("/cadastro", (req, res, next) => {
     mysql.getConnection((error, conn) => {
         if (error) { return res.status(500).send({ error: error }) }
