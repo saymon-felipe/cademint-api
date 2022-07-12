@@ -250,7 +250,6 @@ router.post('/like_task_comment', login, (req, res, next) => {
                     conn.query('insert into task_comment_likes (user_id, task_comment_id) values (?, ?)',
                     [req.usuario.id_usuario, req.body.task_comment_id],
                         (err2, results2) => {
-                            console.log(results2)
                             if (err2) {return res.status(500).send({ error: err2 })};
                             conn.release();
                             const response = {

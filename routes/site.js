@@ -1,26 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const util = require('util');
-const nodemailer = require('nodemailer');
-const smtp_config = require('../config/smtp');
+const email = require('../config/email');
 const crypto = require('crypto');
 const mysql = require("../mysql").pool;
 
-const transport = nodemailer.createTransport({
-    host: smtp_config.host,
-    port: smtp_config.port,
-    secure: false,
-    auth: {
-        user: smtp_config.user,
-        pass: smtp_config.pass
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
-});
-
 async function sendEmail(user_email, name) {
-    const mailSent = await transport.sendMail({
+    const mailSent = await email.sendMail({
         html: createEmailInviteUserToGroup(name),
         subject: `Você está na fila de espera do beta da Cademint!`,
         from: "Ana da Cademint <ana.cademint@gmail.com>",

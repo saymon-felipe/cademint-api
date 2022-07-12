@@ -2,25 +2,12 @@ const express = require('express');
 const router = express.Router();
 const mysql = require("../mysql").pool;
 const login = require("../middleware/login");
-const nodemailer = require('nodemailer');
-const smtp_config = require('../config/smtp');
+const email = require('../config/email');
 const crypto = require('crypto');
+const uploadConfig = require('../config/upload');
 
-const transport = nodemailer.createTransport({
-    host: smtp_config.host,
-    port: smtp_config.port,
-    secure: false,
-    auth: {
-        user: smtp_config.user,
-        pass: smtp_config.pass
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
-});
-
-async function sendEmail(user_email, group_name, group_id, token) {
-    const mailSent = await transport.sendMail({
+async function sendGroupEmail(user_email, group_name, group_id, token) {
+    const mailSent = await email.sendMail({
         html: createEmailInviteUserToGroup(group_name, group_id, token, user_email),
         subject: `Você foi convidado para entrar em ${group_name} na plataforma Cademint!`,
         from: "Ana da Cademint <ana.cademint@gmail.com>",
@@ -99,8 +86,8 @@ router.post("/", (req, res, next) => {
     mysql.getConnection((error, conn) => {
         if (error) { return res.status(500).send({ error: error }) };
         let group_members = "1,2," + req.body.id_usuario;
-        conn.query(`insert into os_groups (group_name, group_members, group_owner) values (?, ?, ?)`, 
-            [req.body.group_name, group_members, req.body.id_usuario],
+        conn.query(`insert into os_groups (group_name, group_members, group_owner, image) values (?, ?, ?, ?)`, 
+            [req.body.group_name, group_members, req.body.id_usuario, process.env.URL_API + '/public/cademint-group.png'],
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) };
 
@@ -125,21 +112,207 @@ router.post("/", (req, res, next) => {
                         [new_user_groups, req.body.id_usuario],
                             (err3, results3) => {
                                 if (err3) { return res.status(500).send({ error: err3 }) };
-                                conn.release();
                                 const response = {
                                     mensagem: "Novo grupo criado",
                                     grupo_criado: {
                                         groups_id: results.insertId,
                                         group_name: req.body.group_name,
                                         group_members: req.body.id_usuario,
-                                        group_owner: req.body.id_usuario
+                                        group_owner: req.body.id_usuario,
+                                        pending_users: req.body.pending_users
                                     }      
                                 }
-                                return res.status(201).send({response});
+                                if (req.body.pending_users != "") {
+                                    conn.query('update os_groups set pending_users = ? where groups_id = ?',
+                                    [req.body.pending_users, results.insertId],
+                                        (err4, results4) => {
+                                            if (err4) { return res.status(500).send({ error: err4 }) };
+                                            const token = crypto.randomBytes(20).toString('hex');
+                                            conn.query('insert into group_tokens(token, group_id, email_requested, create_date) values (?, ?, ?, CURRENT_TIMESTAMP())',
+                                            [token, results.insertId, req.body.pending_users], 
+                                                (err5, results5) => {
+                                                    if (err5) { return res.status(500).send({ error: err5 })};
+                                                    if (sendGroupEmail(req.body.pending_users, req.body.group_name, results.insertId, token)) {
+                                                        return res.status(201).send(response);
+                                                    }
+                                                    console.log("Erro no envio do email durante a criação do grupo");
+                                                }
+                                            )
+                                        }
+                                    )
+                                } else {
+                                    conn.release();
+                                    return res.status(201).send(response);
+                                }
                             }
                         )
                     }
                 )
+            }
+        )
+    });
+});
+
+router.patch("/group_description", login, (req, res, next) => {
+    mysql.getConnection((error, conn) => {
+        if (error) { return res.status(500).send({ error: error }) };
+        conn.query('select group_owner from os_groups where groups_id = ?',
+        [req.body.group_id],
+            (err, results) => {
+                if (err) { return res.status(500).send({ error: err }) };
+                if (req.usuario.id_usuario != results[0].group_owner) {
+                    conn.release();
+                    const error = {
+                        message: "Você não é o dono desse grupo"
+                    }
+                    return res.status(401).send(error);
+                } else {
+                    conn.query('update os_groups set group_description = ? where groups_id = ?',
+                    [req.body.group_description, req.body.group_id],
+                        (err2, results2) => {
+                            if (err2) { return res.status(500).send({ error: err2 }) };
+                            conn.release();
+                            const response = {
+                                message: "A descrição do grupo " + req.body.group_id + " foi alterada com sucesso!"
+                            }
+                            return res.status(200).send(response);
+                        }
+                    )
+                }
+            }
+        )
+    });
+});
+
+router.patch("/group_image/:group_id", login, uploadConfig.upload.single('user_imagem'), (req, res, next) => {
+    if (req.file == undefined) {
+        return res.status(500).send({ error: "Tipo de arquivo não suportado" });
+    }
+    mysql.getConnection((error, conn) => {
+        if (error) { return res.status(500).send({ error: error }) };
+        conn.query('select group_owner from os_groups where groups_id = ?',
+        [req.params.group_id],
+            (err, results) => {
+                if (err) { return res.status(500).send({ error: err }) };
+                if (req.usuario.id_usuario != results[0].group_owner) {
+                    conn.release();
+                    const error = {
+                        message: "Você não é o dono desse grupo"
+                    }
+                    return res.status(401).send(error);
+                } else {
+                    conn.query('update os_groups set image = ? where groups_id = ?',
+                    [req.file.location, req.params.group_id], 
+                        (err2, results2) => {
+                            conn.release();
+                            if (err2) { return res.status(500).send({ error: err2 }) };
+                            if (results.changedRows != 0) {
+                                const response = {
+                                    message: "Imagem do grupo " + req.params.group_id + " alterada com sucesso!",
+                                    group_image_path: req.file.location
+                                }
+                                return res.status(200).send(response);
+                            }
+                            return res.status(404).send({ mensagem: "Nenhum grupo com esse id" });
+                        }
+                    )
+                }
+            }
+        ) 
+    });
+});
+
+router.patch("/exclude_group_image", login, (req, res, next) => {
+    mysql.getConnection((error, conn) => {
+        if (error) { return res.status(500).send({ error: error }) };
+        conn.query('select group_owner from os_groups where groups_id = ?',
+        [req.body.group_id],
+            (err, results) => {
+                if (err) { return res.status(500).send({ error: err }) };
+                if (req.usuario.id_usuario != results[0].group_owner) {
+                    conn.release();
+                    const error = {
+                        message: "Você não é o dono desse grupo"
+                    }
+                    return res.status(401).send(error);
+                } else {
+                    conn.query('SELECT image FROM os_groups WHERE groups_id = ?',
+                    [req.body.group_id],
+                        (err2, results2) => {
+                            if (err2) { return res.status(500).send({ error: err2 }) };
+                            let photo_url = results2[0].image.split("/")[3];
+                            uploadConfig.deleteFromS3(photo_url);
+
+                            conn.query('update os_groups set image = ? where groups_id = ?',
+                            [process.env.URL_API + "/public/cademint-group.png", req.body.group_id], 
+                                (err3, results3) => {
+                                    conn.release();
+                                    if (err3) { return res.status(500).send({ error: err3 }) };
+                                    if (results3.changedRows != 0) {
+                                        const response = {
+                                            group_id: "Retorno do grupo " + req.body.group_id,
+                                            action: "Imagem excluída com sucesso"
+                                        }
+                                        return res.status(200).send({ response });
+                                    }
+                                    return res.status(304).send({ mensagem: "Nenhuma alteração feita" });
+                                }
+                            )
+                        }
+                    );
+                }
+            }
+        )
+    });
+});
+
+router.patch("/group_name", login, (req, res, next) => {
+    mysql.getConnection((error, conn) => {
+        if (error) { return res.status(500).send({ error: error }) };
+        conn.query('select group_owner from os_groups where groups_id = ?',
+        [req.body.group_id],
+            (err, results) => {
+                if (err) { return res.status(500).send({ error: err }) };
+                if (req.usuario.id_usuario != results[0].group_owner) {
+                    conn.release();
+                    const error = {
+                        message: "Você não é o dono desse grupo"
+                    }
+                    return res.status(401).send(error);
+                } else {
+                    conn.query('update os_groups set group_name = ? where groups_id = ?',
+                    [req.body.group_name, req.body.group_id],
+                        (err2, results2) => {
+                            if (err2) { return res.status(500).send({ error: err2 }) };
+                            conn.release();
+                            const response = {
+                                message: "O nome do grupo " + req.body.group_id + " foi alterado com sucesso!"
+                            }
+                            return res.status(200).send(response);
+                        }
+                    )
+                }
+            }
+        )
+    });
+});
+
+router.post("/check_permission", login, (req, res, next) => {
+    mysql.getConnection((error, conn) => {
+        if (error) { return res.status(500).send({ error: error }) };
+        conn.query('select group_owner from os_groups where groups_id = ?',
+        [req.body.group_id],
+            (err, results) => {
+                if (err) { return res.status(500).send({ error: err }) };
+                if (req.usuario.id_usuario != results[0].group_owner) {
+                    conn.release();
+                    const error = {
+                        message: "Você não é o dono desse grupo"
+                    }
+                    return res.status(401).send(error);
+                } else {
+                    return res.status(200).send({ message: "Tudo certo!" });
+                }
             }
         )
     });
@@ -172,6 +345,13 @@ router.post("/return_group", (req, res, next) => {
                     }
                     setTimeout(() => {
                         conn.release();
+                        let pending_users = results[0].pending_users;
+                        let pending_users_object = "";
+                        if (pending_users.indexOf(",") != -1) {
+                            pending_users_object = pending_users.split(",");
+                        } else if (pending_users.length > 0) {
+                            pending_users_object = [pending_users];
+                        }
                         const response = {
                             mensagem: "Retorno do grupo " + req.body.group_id,
                             nome: results[0].group_name,
@@ -179,12 +359,81 @@ router.post("/return_group", (req, res, next) => {
                             group_members: results[0].group_members,
                             group_members_objects: group_members_objects,
                             group_owner: results[0].group_owner,
-                            pending_users: results[0].pending_users
+                            pending_users: pending_users_object,
+                            image: results[0].image,
+                            group_description: results[0].group_description
                         }
                         return res.status(200).send({ response });
                     }, 500);
                 } else {
                     return res.status(404).send({ mensagem: "Nenhum grupo com esse id" });
+                }
+            }
+        )
+    });
+});
+
+router.post("/remove_invitation", login, (req, res, next) => {
+    mysql.getConnection((error, conn) => {
+        if (error) { return res.status(500).send({ error: error }) };
+        conn.query('select group_owner from os_groups where groups_id = ?',
+        [req.body.group_id],
+            (err, results) => {
+                if (err) { return res.status(500).send({ error: err }) };
+                if (req.usuario.id_usuario != results[0].group_owner) {
+                    const error = {
+                        message: "Você não é o dono desse grupo"
+                    }
+                    return res.status(401).send(error);
+                } else {
+                    conn.query('select pending_users from os_groups where groups_id = ?',
+                    [req.body.group_id],
+                        (err, results) => {
+                            if (err) { return res.status(500).send({ error: err }) };
+                            let pending_users = results[0].pending_users;
+                            let pending_users_object = [];
+                            if (pending_users == "") {
+                                return res.status(204).send({ message: "Não existem convites pendentes para esse grupo" });
+                            }
+                            if (pending_users.indexOf(",") != -1) {
+                                pending_users_object = pending_users.split(",");
+                            } else {
+                                pending_users_object = [pending_users];
+                            }
+                            pending_users_object = pending_users_object.filter(function (user) { return user != req.body.email });
+                            if (pending_users_object.length == 0) {
+                                pending_users_object = "";
+                            }
+                            if (pending_users_object.length == 1) {
+                                pending_users_object = pending_users_object.join();
+                            }
+                            if (pending_users_object.length > 1) {
+                                pending_users_object = pending_users_object.join(",");
+                            }
+                            conn.query('update os_groups set pending_users = ? where groups_id = ?',
+                            [pending_users_object, req.body.group_id],
+                                (err2, results2) => {
+                                    if (err2) { return res.status(500).send({ error: err2 }) };
+                                    conn.query('delete from group_tokens where email_requested = ? and group_id = ?',
+                                    [req.body.email, req.body.group_id],
+                                        (err3, results3) => {
+                                            if (err3) { return res.status(500).send({ error: err3 }) };
+                                            conn.release();
+                                            console.log(results3)
+                                            if (results3.affectedRows != 0) {
+                                                const response = {
+                                                    message: "Solicitação excluida com sucesso!"
+                                                }
+                                                return res.status(200).send(response);
+                                            } else {
+                                                return res.status(404).send({ error: "Esse grupo não possui nenhuma solicitação para o email informado" });
+                                            }
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    )
                 }
             }
         )
@@ -227,7 +476,7 @@ router.post("/request_user_to_group", login, (req, res, next) => {
                 if (err) { return res.status(500).send({ error: err })};
                 const response = {
                     mensagem: {
-                        message_email: `Email de solicitação para entrar no grupo ${req.body.group_name} foi enviado para ${req.body.user_email}`,
+                        message_email: `Email de solicitação enviado`,
                         message_token: "Token inserido com sucesso! Validade de 7 dias"
                     },
                     pending_group_id: req.body.group_id
@@ -250,7 +499,7 @@ router.post("/request_user_to_group", login, (req, res, next) => {
                             (err3, results3) => {
                                 if (err3) { return res.status(401).send({ error: err3 })};
                                 conn.release();
-                                if (sendEmail(req.body.user_email, req.body.group_name, req.body.group_id, token)) {
+                                if (sendGroupEmail(req.body.user_email, req.body.group_name, req.body.group_id, token)) {
                                     return res.status(200).send({ response });
                                 } else {
                                     return res.status(500).send({error: "Falha no envio do email"});
