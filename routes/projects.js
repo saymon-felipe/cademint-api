@@ -515,7 +515,7 @@ router.post("/request_user_to_group", login, (req, res, next) => {
 
 router.post("/exclude_user", login, (req, res, next) => {
     let group_id = req.body.group_id;
-    let user_id = req.body.user_id;
+    let user_id = req.body.id_usuario == null ? req.usuario.id_usuario : req.body.id_usuario;
     let newGroupMembers;
     mysql.getConnection((error, conn) => {
         if (error) { return res.status(500).send({error: error})};
@@ -640,7 +640,12 @@ function excludeGroupFromUsers(conn, user_id, group_id) {
         (err, results) => {
             if (err) { return res.status(500).send({ error: err }) }
             if (results[0] != undefined) {
-                let user_groups = results[0].user_groups.split(",");
+                let user_groups = [];
+                if (results[0].user_groups.indexOf(",") != -1) {
+                    user_groups = [results[0].user_groups];
+                } else {
+                    user_groups = results[0].user_groups.split(",");
+                }
                 user_groups.splice(user_groups.indexOf(group_id), 1);
                 let new_user_groups;
                 for (let i in user_groups) {
@@ -652,7 +657,9 @@ function excludeGroupFromUsers(conn, user_id, group_id) {
                 }
                 conn.query('update usuarios set user_groups = ? where id_usuario = ?',
                 [new_user_groups, user_id], 
-                    (err2, results2) => {  }
+                    (err2, results2) => { 
+                        return true;
+                    }
                 )
             } else {
                 return res.status(404).send({ error: "Nenhum usuário com esse id" });
