@@ -99,12 +99,19 @@ router.patch("/change_password", (req, res, next) => {
                                 [hash, results[0].id_usuario],
                                 (err2, results2) => {
                                     if (err2) { return res.status(500).send({ error: err2 }) };
-                                    conn.release();
                                     
-                                    const response = {
-                                        mensagem: "Senha alterada com sucesso!"
-                                    }
-                                    return res.status(201).send(response);
+                                    conn.query('update usuarios set reset_password_token = ? where id_usuario = ?',
+                                    ["", results[0].id_usuario],
+                                        (err3, results3) => {
+                                            if (err3) { console.log(err3);return res.status(500).send({ error: err3 }) };
+                                            conn.release();
+
+                                            const response = {
+                                                mensagem: "Senha alterada com sucesso!"
+                                            }
+                                            return res.status(201).send(response);
+                                        }
+                                    )
                                 }
                             )
                         });
