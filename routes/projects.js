@@ -634,18 +634,16 @@ router.post("/enter_group_with_token", (req, res, next) => {
     });
 });
 
-function excludeGroupFromUsers(conn, user_id, group_id) {
+async function excludeGroupFromUsers(conn, user_id, group_id) {
     conn.query('select * from usuarios where id_usuario = ?',
     [user_id], 
         (err, results) => {
-            if (err) { return res.status(500).send({ error: err }) }
+            if (err) { return res.status(500).send({ error: err }) };
             if (results[0] != undefined) {
                 let user_groups = [];
                 if (results[0].user_groups.indexOf(",") != -1) {
-                    user_groups = [results[0].user_groups];
-                } else {
                     user_groups = results[0].user_groups.split(",");
-                }
+                } 
                 user_groups.splice(user_groups.indexOf(group_id), 1);
                 let new_user_groups;
                 for (let i in user_groups) {
@@ -658,6 +656,7 @@ function excludeGroupFromUsers(conn, user_id, group_id) {
                 conn.query('update usuarios set user_groups = ? where id_usuario = ?',
                 [new_user_groups, user_id], 
                     (err2, results2) => { 
+                        if (err2) { return res.status(500).send({ error: err2 }) };
                         return true;
                     }
                 )
@@ -677,14 +676,15 @@ router.delete('/delete_group', login, (req, res, next) => {
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) };
                 let group_members = results[0].group_members, new_group_members;
+                
                 if (group_members.indexOf(",") != -1) {
                     new_group_members = group_members.split(",");
                     for (let i = 0; i < new_group_members.length; i++) {
-                        excludeGroupFromUsers(conn, new_group_members[i], req.body.groups_id);
+                        excludeGroupFromUsers(conn, res, new_group_members[i], req.body.groups_id);
                     }
                 } else {
                     new_group_members = group_members;
-                    excludeGroupFromUsers(conn, new_group_members, req.body.groups_id);
+                    excludeGroupFromUsers(conn, res, new_group_members, req.body.groups_id);
                 }
                 conn.query(
                     'delete from os_groups where groups_id = ?',

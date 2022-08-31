@@ -72,12 +72,13 @@ router.post('/find', (req, res, next) => {
         conn.query(
             'select * from os_ambient where id_raw = ?;',
             [req.body.id],
-            (error, resultado, fields) => {
+            (err, results) => {
                 conn.release();
-                
+                if (err) { return res.status(500).send({ error: err }) };
+
                 const response = {
-                    length: resultado.length,
-                    current_task: resultado.map(os => {
+                    length: results.length,
+                    current_task: results.map(os => {
                         return {
                             id: os.id_raw,
                             desc_os: os.desc_os,
@@ -88,15 +89,13 @@ router.post('/find', (req, res, next) => {
                             size: os.size,
                             group_id: os.group_id,
                             type: "GET",
-                            description: 'Retorno da OS ' + os.id_raw,
+                            description: 'Retorno da tarefa ' + os.id_raw,
                             link_to_view: process.env.URL_API + "os/"
                         }
                     })
                 }
 
-                if (error) { return res.status(500).send({ error: error }) }
-
-                res.status(200).send({response});
+                return res.status(200).send(response);
             }
         );
     });
@@ -118,15 +117,14 @@ router.post('/', login, (req, res, next) => {
                 req.body.group_id,
                 req.body.task_create_date
             ],
-            (error, resultado, field) => {
+            (err, results) => {
                 conn.release();
-                
-                if (error) { return res.status(500).send({ error: error }) }
+                if (err) { return res.status(500).send({ error: err }) };
 
                 const response = {
-                    message: "Cadastro de OS feito com sucesso",
+                    message: "Cadastro de tarefa feito com sucesso",
                     os_criada: {
-                        id: resultado.insertId,
+                        id: results.insertId,
                         desc_os: req.body.desc_os,
                         status_os: req.body.status_os,
                         priority: req.body.priority,
@@ -141,7 +139,7 @@ router.post('/', login, (req, res, next) => {
                         }
                     }
                 }
-                res.status(201).send(response)
+                return res.status(201).send(response);
             }
         );
     });
@@ -153,8 +151,9 @@ router.post('/task_comment', login, (req, res, next) => {
         conn.query('insert into task_comments (desc_comentario, criador_comentario, data_criacao_comentario, id_task) values (?, ?, ?, ?)',
         [req.body.desc_comentario, req.usuario.id_usuario, req.body.data_criacao_comentario, req.body.id_task],
             (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
                 conn.release();
+                if (err) { return res.status(500).send({ error: err }) };
+                
                 if (results.insertId > 0) {
                     const response = {
                         message: "Comentário feito na tarefa " + req.body.id_task,
@@ -200,8 +199,9 @@ router.post('/get_task_comment', login, (req, res, next) => {
                     group by task_comments.id_comentario;`,
         [req.usuario.id_usuario, req.body.id_task],
             (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
                 conn.release();
+                if (err) { return res.status(500).send({ error: err }) };
+                
                 const response = {
                     message: "Retorno dos comentários feitos na tarefa " + req.body.id_task,
                     comentarios: results.map(comment => {
@@ -227,10 +227,10 @@ router.post('/like_task_comment', login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
         if (error) { return res.status(500).send({ error: error }) };
         conn.query(`
-                    select id_like
-                    from task_comment_likes 
-                    where task_comment_likes.task_comment_id = ? and task_comment_likes.user_id = ?
-                    `,
+            select id_like
+            from task_comment_likes 
+            where task_comment_likes.task_comment_id = ? and task_comment_likes.user_id = ?
+        `,
         [req.body.task_comment_id, req.usuario.id_usuario],
             (err, results) => {
                 if (err) {return res.status(500).send({ error: err })};
@@ -238,8 +238,9 @@ router.post('/like_task_comment', login, (req, res, next) => {
                     conn.query('delete from task_comment_likes where id_like = ?',
                     [results[0].id_like],
                         (err2, results2) => {
-                            if (err2) {return res.status(500).send({ error: err2 })};
                             conn.release();
+                            if (err2) {return res.status(500).send({ error: err2 })};
+                            
                             const response = {
                                 message: "Like removido do comentário " + results[0].id_task + "."
                             }
@@ -250,8 +251,9 @@ router.post('/like_task_comment', login, (req, res, next) => {
                     conn.query('insert into task_comment_likes (user_id, task_comment_id) values (?, ?)',
                     [req.usuario.id_usuario, req.body.task_comment_id],
                         (err2, results2) => {
-                            if (err2) {return res.status(500).send({ error: err2 })};
                             conn.release();
+                            if (err2) { return res.status(500).send({ error: err2 }) };
+                            
                             const response = {
                                 message: "Comentário " + req.body.task_comment_id + " recebeu uma curtida",
                                 like: {
@@ -276,12 +278,11 @@ router.patch('/', login, (req, res, next) => {
         conn.query(
             'update os_ambient set desc_os = ?, status_os = ?, priority = ?, sponsor = ?, user_owner = ?, size = ? where id_raw = ?',
             [req.body.desc_os, req.body.status_os, req.body.priority, req.body.sponsor, req.body.user_owner, req.body.size, req.body.id],
-            (error, resultado, fields) => {
+            (err, results) => {
                 conn.release();
+                if (err) { return res.status(500).send({ error: err }) }
 
-                if (error) { return res.status(500).send({ error: error }) }
-
-                res.status(202).send({feedback: "OS alterada com sucesso!"});
+                return res.status(202).send({ message: "Tarefa alterada com sucesso!" });
             }
         );
     });
@@ -294,8 +295,8 @@ router.post('/check_permission', login, (req, res, next) => {
             'select * from os_ambient where id_raw = ? and group_id = ?',
             [req.body.id, req.body.group_id],
             (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
                 conn.release();
+                if (err) { return res.status(500).send({ error: err }) };
 
                 if (results.length > 0) {
                     return res.status(200).send({ feedback: "Acesso permitido!" });
@@ -307,58 +308,27 @@ router.post('/check_permission', login, (req, res, next) => {
     });
 });
 
-router.patch('/id', login, (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
-        conn.query(
-            'update os_ambient set id_raw = ? where id_raw = ?',
-            [
-                req.body.id
-            ],
-            (error, resultado, field) => {
-                conn.release();
-                if (error) { return res.status(500).send({ error: error }) }
-
-                const response = {
-                    message: "Id extendido adicionado à OS com sucesso",
-                    update: {
-                        id: req.body.id,
-                        request: {
-                            type: "PATCH",
-                            description: "Update de OS"
-                        }
-                    }
-                }
-                res.status(202).send(response);
-            }  
-        );
-    });
-});
-
 router.patch('/os_status', login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
         if (error) { return res.status(500).send({ error: error }) }
         conn.query(
             'update os_ambient set status_os = ? where id_raw = ?',
-            [
-                req.body.status_os,
-                req.body.id
-            ],
-            (error, resultado, field) => {
+            [req.body.status_os, req.body.id],
+            (err, results) => {
                 conn.release();
-                if (error) { return res.status(500).send({ error: error }) }
+                if (err) { return res.status(500).send({ error: err }) };
 
                 const response = {
-                    message: "Status da OS alterado com sucesso",
+                    message: "Status da tarefa alterado com sucesso",
                     update: {
                         id: req.body.id,
                         request: {
                             type: "PATCH",
-                            description: "Update de status da OS"
+                            description: "Update de status da tarefa"
                         }
                     }
                 }
-                res.status(202).send(response);
+                return res.status(202).send(response);
             }  
         );
     });
@@ -368,16 +338,14 @@ router.patch('/os_status', login, (req, res, next) => {
 
 router.delete('/delete_os', login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
-        conn.query(
-            'delete from os_ambient where id_raw = ?',
+        if (error) { return res.status(500).send({ error: error }) };
+        conn.query('delete from os_ambient where id_raw = ?',
             [req.body.id],
-            (error, resultado, fields) => {
+            (err, results) => {
                 conn.release();
+                if (err) { return res.status(500).send({ error: err }) };
 
-                if (error) { return res.status(500).send({ error: error }) }
-
-                res.status(202).send({feedback: "OS removida com sucesso!"});
+                res.status(202).send({feedback: "Tarefa removida com sucesso!"});
             }
         );
     });
