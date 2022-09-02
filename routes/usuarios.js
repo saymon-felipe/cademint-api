@@ -825,7 +825,7 @@ router.post("/login", (req, res, next) => {
                     (err2, results2) => {
                         conn.release();
                         if (err2) { return res.status(404).send( {error: err2 } )};
-                        if (results2.length > 0) {
+                        if (results2.length > 0 || results2.length <= 0) { //Condição OU adicionada para permitir que usuarios sem acesso ao beta fechado possam se conectar, isso é temporário, pois no futuro essa funcionalidade do beta fechado será extinta
                             bcrypt.compare(req.body.senha, results[0].senha, (error2, result) => {
                                 if (error2) {
                                     return res.status(401).send({ mensagem: "Falha na autenticação" });
