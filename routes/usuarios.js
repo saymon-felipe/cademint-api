@@ -817,6 +817,7 @@ router.post("/login", (req, res, next) => {
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) };
                 if (results.length < 1) {
+                    conn.release();
                     return res.status(401).send({ mensagem: "Falha na autenticação" });
                 }
 
