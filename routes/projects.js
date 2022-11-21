@@ -202,14 +202,14 @@ router.patch("/group_image/:group_id", login, uploadConfig.upload.single('user_i
                     return res.status(401).send(error);
                 } else {
                     conn.query('update os_groups set image = ? where groups_id = ?',
-                    [req.file.location, req.params.group_id], 
+                    [req.file.transforms[0].location, req.params.group_id], 
                         (err2, results2) => {
                             conn.release();
                             if (err2) { return res.status(500).send({ error: err2 }) };
                             if (results.changedRows != 0) {
                                 const response = {
                                     message: "Imagem do grupo " + req.params.group_id + " alterada com sucesso!",
-                                    group_image_path: req.file.location
+                                    group_image_path: req.file.transforms[0].location
                                 }
                                 return res.status(200).send(response);
                             }

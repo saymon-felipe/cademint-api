@@ -1,7 +1,10 @@
 const aws = require('aws-sdk');
-const multerS3 = require('multer-s3');
+const multerS3 = require('multer-s3-transform');
 const multer = require('multer');
 const util = require('util');
+const sharp = require('sharp');
+
+const imageWidth = 300;
 
 aws.config.update({
     accessKeyId: process.env.ACCESS_KEY_ID,
@@ -25,10 +28,20 @@ let uploadConfig = {
             s3,
             bucket: 'scrum-cademint-storage',
             acl: 'public-read',
-            key(req, file, cb) {
-                let fileName = new Date().toISOString() + file.originalname;
-                cb(null, fileName.replace(":", "_").replace(":", "_"));
-            }
+            shouldTransform: function (req, file, cb) {
+                cb(null, /^image/i.test(file.mimetype))
+            },
+            transforms: [{
+                id: 'original',
+                key(req, file, cb) {
+                    let fileName = new Date().toISOString() + file.originalname;
+                    console.log(fileName.replace(":", "_").replace(":", "_").replace(" ", "_"))
+                    cb(null, fileName.replace(":", "_").replace(":", "_").replace(" ", "_"));
+                },
+                transform: function (req, file, cb) {
+                    cb(null, sharp().resize(imageWidth).jpeg());
+                }
+            }],
         }),
         limits: {
             fileSize: 1024 * 1024 * 2

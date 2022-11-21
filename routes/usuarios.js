@@ -617,18 +617,18 @@ router.patch("/upload_photo", login, uploadConfig.upload.single('user_imagem'), 
         return res.status(500).send({ error: "Tipo de arquivo não suportado" })
     } else {
         mysql.getConnection((error, conn) => {
-            if (error) { return res.status(500).send({ error: error }) }
+            if (error) { return res.status(500).send({ error: error }) };
             conn.query('update usuarios set profile_photo = ? where id_usuario = ?',
-            [req.file.location, req.usuario.id_usuario], 
+            [req.file.transforms[0].location, req.usuario.id_usuario], 
                 (error, results) => {
                     conn.release();
                     if (error) { return res.status(500).send({ error: error }) }
                     if (results.changedRows != 0) {
                         const response = {
                             id_usuario: "Retorno de usuário " + req.usuario.id_usuario,
-                            profile_photo: req.file.location
+                            profile_photo: req.file.transforms[0].location
                         }
-                        return res.status(200).send({ response });
+                        return res.status(200).send(response);
                     } else {
                         return res.status(404).send({ mensagem: "Nenhum usuário com esse id" });
                     }
@@ -645,14 +645,14 @@ router.patch("/upload_banner", login, uploadConfig.upload.single('user_imagem'),
         mysql.getConnection((error, conn) => {
             if (error) { return res.status(500).send({ error: error }) }
             conn.query('update usuarios set user_cover_image = ? where id_usuario = ?',
-            [req.file.location, req.usuario.id_usuario], 
+            [req.file.transforms[0].location, req.usuario.id_usuario], 
                 (error, results) => {
                     conn.release();
                     if (error) { return res.status(500).send({ error: error }) }
                     if (results.changedRows != 0) {
                         const response = {
                             id_usuario: "Retorno de usuário " + req.usuario.id_usuario,
-                            profile_photo: req.file.location
+                            profile_photo: req.file.transforms[0].location
                         }
                         return res.status(200).send({ response });
                     } else {
