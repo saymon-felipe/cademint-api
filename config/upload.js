@@ -35,7 +35,6 @@ let uploadConfig = {
                 id: 'original',
                 key(req, file, cb) {
                     let fileName = new Date().toISOString() + file.originalname;
-                    console.log(fileName.replace(":", "_").replace(":", "_").replace(" ", "_"))
                     cb(null, fileName.replace(":", "_").replace(":", "_").replace(" ", "_"));
                 },
                 transform: function (req, file, cb) {
