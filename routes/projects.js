@@ -178,10 +178,12 @@ function addGroupToMember(conn, res, req, user_id, group_id, from_default = fals
                                     [token, group_id, req.body.pending_users], 
                                         (err4, results4) => {
                                             if (err4) { return res.status(500).send({ error: err4 })};
-                                            if (sendGroupEmail(req.body.pending_users, req.body.group_name, group_id, token)) {
-                                                return res.status(201).send(response);
-                                            } else {
-                                                console.log("Erro no envio do email durante a criação do grupo");
+                                            if (!from_default) {
+                                                if (sendGroupEmail(req.body.pending_users, req.body.group_name, group_id, token)) {
+                                                    return res.status(201).send(response);
+                                                } else {
+                                                    console.log("Erro no envio do email durante a criação do grupo");
+                                                }
                                             }
                                         }
                                     )
