@@ -80,7 +80,7 @@ function createEmailRejectedBeta(name) {
         </p>
         <br>
         <br>
-        <a href="${process.env.URL_SITE + process.env.SITE_NAME}/register.html" style="text-decoration: none; color: rgb(0, 162, 232); font-weight: 600; font-size: 20px; background: #FFCA37; padding: 10px 15px; border-radius: 10px;">
+        <a href="${process.env.URL_SITE}/register.html" style="text-decoration: none; color: rgb(0, 162, 232); font-weight: 600; font-size: 20px; background: #FFCA37; padding: 10px 15px; border-radius: 10px;">
             CRIAR CONTA GRATUITAMENTE!
         </a>
         <br>
