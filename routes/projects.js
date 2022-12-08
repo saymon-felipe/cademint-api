@@ -172,7 +172,7 @@ function addGroupToMember(conn, res, req, user_id, group_id, from_default = fals
                             conn.query('update os_groups set pending_users = ? where groups_id = ?',
                             [req.body.pending_users, group_id],
                                 (err3, results3) => {
-                                    if (err4) { return res.status(500).send({ error: err3 }) };
+                                    if (err3) { return res.status(500).send({ error: err3 }) };
                                     const token = crypto.randomBytes(20).toString('hex');
                                     conn.query('insert into group_tokens(token, group_id, email_requested, create_date) values (?, ?, ?, CURRENT_TIMESTAMP())',
                                     [token, group_id, req.body.pending_users], 
