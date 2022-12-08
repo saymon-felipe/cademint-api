@@ -131,6 +131,74 @@ function removeGroupFromDefaultMembers(conn, res, group_id) {
     excludeGroupFromUsers(conn, res, 2, group_id);
 }
 
+function addGroupToDefaultMembers(conn, res, req, group_id) {
+    addGroupToMember(conn, res, req, 1, group_id, true, false);
+    addGroupToMember(conn, res, req, 2, group_id, true, true);
+}
+
+function addGroupToMember(conn, res, req, user_id, group_id, from_default = false, releaseConn = false) {
+    conn.query('select user_groups from usuarios where id_usuario = ?',
+        [user_id],
+            (err, results) => {
+                if (err) { return res.status(500).send({ error: err }) };
+                let user_groups = [], new_user_groups;
+                if (results[0].user_groups.indexOf(",") != -1) {
+                    user_groups = results[0].user_groups.split(",");
+                    user_groups.push(group_id);
+                    new_user_groups = user_groups.join(",");
+                } else {
+                    if (results[0].user_groups.length != 0) {
+                        new_user_groups = results[0].user_groups + "," + group_id;
+                    } else {
+                        new_user_groups = group_id;
+                    }
+                }
+
+                conn.query('update usuarios set user_groups = ? where id_usuario = ?',
+                [new_user_groups, user_id],
+                    (err2, results2) => {
+                        if (err2) { return res.status(500).send({ error: err2 }) };
+                        const response = {
+                            mensagem: "Novo grupo criado",
+                            grupo_criado: {
+                                groups_id: group_id,
+                                group_name: req.body.group_name,
+                                group_members: req.body.id_usuario,
+                                group_owner: req.body.id_usuario,
+                                pending_users: req.body.pending_users
+                            }      
+                        }
+                        if (req.body.pending_users != "") {
+                            conn.query('update os_groups set pending_users = ? where groups_id = ?',
+                            [req.body.pending_users, group_id],
+                                (err3, results3) => {
+                                    if (err4) { return res.status(500).send({ error: err3 }) };
+                                    const token = crypto.randomBytes(20).toString('hex');
+                                    conn.query('insert into group_tokens(token, group_id, email_requested, create_date) values (?, ?, ?, CURRENT_TIMESTAMP())',
+                                    [token, group_id, req.body.pending_users], 
+                                        (err4, results4) => {
+                                            if (err4) { return res.status(500).send({ error: err4 })};
+                                            if (sendGroupEmail(req.body.pending_users, req.body.group_name, group_id, token)) {
+                                                return res.status(201).send(response);
+                                            } else {
+                                                console.log("Erro no envio do email durante a criação do grupo");
+                                            }
+                                        }
+                                    )
+                                }
+                            )
+                        } else {
+                            if (!from_default && releaseConn || (from_default && releaseConn)) {
+                                conn.release();
+                                return res.status(201).send(response);
+                            }
+                        }
+                    }
+                )
+            }
+        )
+}
+
 router.post("/", (req, res, next) => {
     mysql.getConnection((error, conn) => {
         if (error) { return res.status(500).send({ error: error }) };
@@ -140,66 +208,8 @@ router.post("/", (req, res, next) => {
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) };
 
-                conn.query('select user_groups from usuarios where id_usuario = ?',
-                [req.body.id_usuario],
-                    (err2, results2) => {
-                        if (err2) { return res.status(500).send({ error: err2 }) };
-                        let user_groups = [], new_user_groups;
-                        if (results2[0].user_groups.indexOf(",") != -1) {
-                            user_groups = results2[0].user_groups.split(",");
-                            user_groups.push(results.insertId);
-                            new_user_groups = user_groups.join(",");
-                        } else {
-                            if (results2[0].user_groups.length != 0) {
-                                new_user_groups = results2[0].user_groups + "," + results.insertId;
-                            } else {
-                                new_user_groups = results.insertId;
-                            }
-                        }
-
-                        conn.query('update usuarios set user_groups = ? where id_usuario = ?',
-                        [new_user_groups, req.body.id_usuario],
-                            (err3, results3) => {
-                                if (err3) { return res.status(500).send({ error: err3 }) };
-                                insertGroupInDefaultMembers()
-                                .then(function () {
-                                    const response = {
-                                        mensagem: "Novo grupo criado",
-                                        grupo_criado: {
-                                            groups_id: results.insertId,
-                                            group_name: req.body.group_name,
-                                            group_members: req.body.id_usuario,
-                                            group_owner: req.body.id_usuario,
-                                            pending_users: req.body.pending_users
-                                        }      
-                                    }
-                                    if (req.body.pending_users != "") {
-                                        conn.query('update os_groups set pending_users = ? where groups_id = ?',
-                                        [req.body.pending_users, results.insertId],
-                                            (err4, results4) => {
-                                                if (err4) { return res.status(500).send({ error: err4 }) };
-                                                const token = crypto.randomBytes(20).toString('hex');
-                                                conn.query('insert into group_tokens(token, group_id, email_requested, create_date) values (?, ?, ?, CURRENT_TIMESTAMP())',
-                                                [token, results.insertId, req.body.pending_users], 
-                                                    (err5, results5) => {
-                                                        if (err5) { return res.status(500).send({ error: err5 })};
-                                                        if (sendGroupEmail(req.body.pending_users, req.body.group_name, results.insertId, token)) {
-                                                            return res.status(201).send(response);
-                                                        }
-                                                        console.log("Erro no envio do email durante a criação do grupo");
-                                                    }
-                                                )
-                                            }
-                                        )
-                                    } else {
-                                        conn.release();
-                                        return res.status(201).send(response);
-                                    }
-                                })
-                            }
-                        )
-                    }
-                )
+                addGroupToMember(conn, res, req, req.body.id_usuario, results.insertId, false, false);
+                addGroupToDefaultMembers(conn, res, req, results.insertId);
             }
         )
     });
@@ -686,7 +696,7 @@ router.post("/enter_group_with_token", (req, res, next) => {
     });
 });
 
-async function excludeGroupFromUsers(conn, user_id, group_id) {
+function excludeGroupFromUsers(conn, res, user_id, group_id) {
     conn.query('select * from usuarios where id_usuario = ?',
     [user_id], 
         (err, results) => {
@@ -701,7 +711,7 @@ async function excludeGroupFromUsers(conn, user_id, group_id) {
                 for (let i in user_groups) {
                     if (i > 0) {
                         new_user_groups += "," + user_groups[i];
-                    } else {
+                    } else { 
                         new_user_groups = user_groups[i];
                     }
                 }
