@@ -21,8 +21,8 @@ async function sendGroupEmail(user_email, group_name, group_id, token) {
     })
 }
 
-function generateGroupLink(group_id, token, user_email) {
-    let temporaryLink = `gid=${group_id}&tk=${token}&email=${user_email}`
+function generateGroupLink(group_id, group_name, token, user_email) {
+    let temporaryLink = `gid=${group_id}&gname=${group_name}&tk=${token}&email=${user_email}`
     return temporaryLink;
 }
 
@@ -34,7 +34,7 @@ function createEmailInviteUserToGroup(group_name, group_id, token, user_email) {
         <p>Para entrar no grupo e criar uma conta caso você ainda não seja cadastrado em nossa plataforma, clique no botão abaixo!</p>
         
         <br>
-        <a href="${process.env.URL_SITE}/enter-group?${generateGroupLink(group_id, token, user_email)}" style="text-decoration: none; color: rgb(0, 162, 232); font-weight: 600; font-size: 20px; background: #FFCA37; padding: 10px 15px; border-radius: 10px;">
+        <a href="${process.env.URL_SITE}/enter-group?${generateGroupLink(group_id, group_name, token, user_email)}" style="text-decoration: none; color: rgb(0, 162, 232); font-weight: 600; font-size: 20px; background: #FFCA37; padding: 10px 15px; border-radius: 10px;">
             ENTRAR NO GRUPO
         </a>
         <br>
