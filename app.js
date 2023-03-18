@@ -56,39 +56,3 @@ app.use((error, req, res, next) => {
 
 
 module.exports = app;
-
-// Variáveis de ambiente (nodemon.json)
-//
-// PRODUÇÃO
-/*
-
-{
-    "env": {
-        "MYSQL_USER" : "b1w1c8lo2lh1jqff",
-        "MYSQL_PASSWORD" : "wwnc9tpqqjg8vlg1",
-        "MYSQL_DATABASE" : "v1cub3yhyxzfr7p0",
-        "MYSQL_HOST" : "ckshdphy86qnz0bj.cbetxkdyhwsb.us-east-1.rds.amazonaws.com",
-        "MYSQL_PORT" : 3306,
-        "JWT_KEY": "SCRUM_CADEMINT_JWT_SECRET_CODE",
-        "URL_API": "https://scrum-cademint-api.herokuapp.com/"
-    }
-}
-
-*/
-//
-// TESTE
-/*
-
-{
-    "env": {
-        "MYSQL_USER" : "root",
-        "MYSQL_PASSWORD" : "root",
-        "MYSQL_DATABASE" : "scrum_db",
-        "MYSQL_HOST" : "localhost",
-        "MYSQL_PORT" : 3306,
-        "JWT_KEY": "SCRUM_CADEMINT_JWT_SECRET_CODE",
-        "URL_API": "https://scrum-cademint-api.herokuapp.com/"
-    }
-}
-
-*/

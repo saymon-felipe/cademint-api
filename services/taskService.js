@@ -1,0 +1,373 @@
+const functions = require("../utils/functions");
+
+let taskService = {
+    checkIfGroupIsAvailableToUser: function (groupId, userId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                SELECT
+                    user_groups
+                FROM
+                    usuarios
+                WHERE
+                    id_usuario = ?
+            `, [userId])
+            .then((results) => {
+                if (results[0].user_groups.indexOf(groupId) == -1) {
+                    resolve(false);
+                } else {
+                    resolve(true);
+                }
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnTasks: function (groupId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                SELECT 
+                    os_ambient.id_raw,
+                    os_ambient.desc_os,
+                    os_ambient.status_os,
+                    os_ambient.priority,
+                    os_ambient.sponsor,
+                    os_ambient.size,
+                    os_ambient.group_id,
+                    os_ambient.user_owner,
+                    os_ambient.task_create_date,
+                    sponsor.nome AS sponsor_name,
+                    owner.nome AS user_owner_name
+                FROM
+                    os_ambient
+                INNER JOIN 
+                    usuarios sponsor
+                ON
+                    sponsor.id_usuario = os_ambient.sponsor
+                INNER JOIN
+                    usuarios owner 
+                ON
+                    owner.id_usuario = os_ambient.user_owner
+                WHERE
+                    os_ambient.group_id = ?;
+            `, [groupId])
+            .then((results2) => {
+                let tasksObj = {
+                    os_list: results2.map(os => {
+                        return {
+                            id: os.id_raw,
+                            desc_os: os.desc_os,
+                            status_os: os.status_os,
+                            priority: os.priority,
+                            sponsor: os.sponsor,
+                            sponsor_name: os.sponsor_name,
+                            user_owner_name: os.user_owner_name,
+                            user_owner: os.user_owner,
+                            size: os.size,
+                            group_id: os.group_id,
+                            task_create_date: os.task_create_date
+                        }
+                    })
+                }
+                resolve(tasksObj);
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnTask: function (taskId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                SELECT
+                    *
+                FROM
+                    os_ambient
+                WHERE 
+                    id_raw = ?
+            `, [taskId])
+            .then((results) => {
+                let task = results.map(task => {
+                    return {
+                        id: task.id_raw,
+                        desc_os: task.desc_os,
+                        status_os: task.status_os,
+                        priority: task.priority,
+                        sponsor: task.sponsor,
+                        user_owner: task.user_owner,
+                        size: task.size,
+                        group_id: task.group_id
+                    }
+                })
+                resolve(task);
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    createTask: function (task) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                INSERT INTO
+                    os_ambient
+                    (desc_os, status_os, priority, sponsor, user_owner, size, group_id, task_create_date)
+                VALUES
+                    (?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+                task.desc_os,
+                task.status_os,
+                task.priority,
+                task.sponsor,
+                task.user_owner,
+                task.size,
+                task.group_id,
+                task.task_create_date
+            ])
+            .then((results) => {
+                let createdTask = {
+                    id: results.insertId,
+                    desc_os: task.desc_os,
+                    status_os: task.status_os,
+                    priority: task.priority,
+                    sponsor: task.sponsor,
+                    user_owner: task.user_owner,
+                    size: task.size,
+                    group_id: task.group_id,
+                }
+                resolve(createdTask);
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    insertComment: function (comment) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                INSERT INTO
+                    task_comments
+                    (desc_comentario, criador_comentario, data_criacao_comentario, id_task)
+                VALUES
+                    (?, ?, ?, ?)
+            `, [
+                comment.desc_comentario,
+                comment.id_usuario,
+                comment.data_criacao_comentario,
+                comment.id_task
+            ])
+            .then((results) => {
+                if (results.insertId > 0) {
+                    resolve(true);
+                } else {
+                    resulve(false);
+                }
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    getTaskComments: function (userId, taskId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                SELECT 
+                    task_comments.id_comentario,
+                    task_comments.desc_comentario,
+                    task_comments.criador_comentario,
+                    task_comments.data_criacao_comentario,
+                    task_comments.id_task,
+                    criador.nome AS criador_nome,
+                    criador.profile_photo AS criador_imagem, 
+                    COUNT(id_like) AS curtidas_comentario,
+                    (
+                        SELECT COUNT(id_like)
+                        FROM task_comment_likes likes
+                        WHERE likes.task_comment_id = id_comentario and likes.user_id = ?
+                    ) AS user_has_liked
+                FROM
+                    task_comments
+                LEFT JOIN
+                    task_comment_likes likes
+                ON
+                    likes.task_comment_id = task_comments.id_comentario
+                INNER JOIN
+                    usuarios criador
+                ON
+                    criador.id_usuario = task_comments.criador_comentario
+                WHERE
+                    task_comments.id_task = ?
+                GROUP BY
+                    task_comments.id_comentario
+            `, [userId, taskId])
+            .then((results) => {
+                let comentarios = results.map(comment => {
+                    return {
+                        id_comentario: comment.id_comentario,
+                        desc_comentario: comment.desc_comentario,
+                        criador_comentario: comment.criador_comentario,
+                        criador_imagem: comment.criador_imagem,
+                        criador_nome: comment.criador_nome,
+                        data_criacao_comentario: comment.data_criacao_comentario,
+                        curtidas_comentario: comment.curtidas_comentario,
+                        user_has_liked: comment.user_has_liked
+                    }
+                })
+                resolve(comentarios);
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    selectLike: function (taskCommentId, userId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                SELECT
+                    id_like
+                FROM
+                    task_comment_likes 
+                WHERE
+                    task_comment_likes.task_comment_id = ? and task_comment_likes.user_id = ?
+            `, [taskCommentId, userId])
+            .then((results) => {
+                if (results.length > 0) {
+                    resolve(results[0])
+                } else {
+                    resolve(null);
+                }
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    deleteLike: function (idLike) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                DELETE FROM
+                    task_comment_likes
+                WHERE
+                    id_like = ?
+            `, [idLike])
+            .then((results) => {
+                resolve(true);
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    createLike: function (userId, commentId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                INSERT INTO
+                    task_comment_likes
+                    (user_id, task_comment_id)
+                VALUES
+                    (?, ?)
+            `, [userId, commentId])
+            .then((results) => {
+                resolve(true);
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    updateTask: function (task) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                UPDATE
+                    os_ambient
+                SET
+                    desc_os = ?, status_os = ?, priority = ?, sponsor = ?, user_owner = ?, size = ?
+                WHERE
+                    id_raw = ?
+            `, [
+                task.desc_os,
+                task.status_os,
+                task.priority,
+                task.sponsor,
+                task.user_owner,
+                task.size,
+                task.id
+            ])
+            .then((results) => {
+                let changedTask = {
+                    desc_os: task.desc_os,
+                    status_os: task.status_os,
+                    priority: task.priority,
+                    sponsor: task.sponsor,
+                    user_owner: task.user_owner,
+                    size: task.size,
+                    id: task.id
+                }
+                resolve(changedTask);
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    checkPermission: function (taskId, groupId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                SELECT
+                    *
+                FROM
+                    os_ambient
+                WHERE
+                    id_raw = ?
+                AND
+                    group_id = ?
+            `, [taskId, groupId])
+            .then((results) => {
+                if (results.length > 0) {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    changeTaskStatus: function (status, taskId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                UPDATE
+                    os_ambient
+                SET
+                    status_os = ?
+                WHERE
+                    id_raw = ?
+            `, [status, taskId])
+            .then((results) => {
+                resolve();
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    deleteTask: function (taskId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                DELETE FROM
+                    os_ambient
+                WHERE
+                    id_raw = ?
+            `, [taskId])
+            .then(() => {
+                resolve();
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    }
+}
+
+module.exports = taskService;
