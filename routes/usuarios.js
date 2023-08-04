@@ -57,7 +57,7 @@ function createResetPasswordEmail(token) {
 
 router.post("/validate_reset_password_token", (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         conn.query(`select reset_password_token from usuarios where reset_password_token = '${req.body.token}' and reset_password_require_date >= date_sub(current_timestamp(), interval 30 minute)`,
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) };
@@ -79,7 +79,7 @@ router.post("/validate_reset_password_token", (req, res, next) => {
 
 router.patch("/change_password", (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         conn.query(`select reset_password_token, senha, id_usuario from usuarios where reset_password_token = '${req.body.token}' and reset_password_require_date >= date_sub(current_timestamp(), interval 30 minute)`,
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) };
@@ -127,11 +127,11 @@ router.patch("/change_password", (req, res, next) => {
 
 router.get("/", (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send(error) }
         conn.query('select * from usuarios', 
             (error, results) => {
                 conn.release();
-                if (error) { return res.status(500).send({ error: error }) }
+                if (error) { return res.status(500).send(error) }
                 if (results.length > 0) {
                     const response = {
                         mensagem: "Retorno de todos os usuários",
@@ -153,12 +153,12 @@ router.get("/", (req, res, next) => {
 
 router.get("/return_users_occupations", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send(error) }
         conn.query('select user_occupation from usuarios where id_usuario = ?', 
         [req.usuario.id_usuario],
             (error, results) => {
                 conn.release();
-                if (error) { return res.status(500).send({ error: error }) }
+                if (error) { return res.status(500).send(error) }
                 
                 const response = {
                     user_occupations: results[0].user_occupation,
@@ -173,7 +173,7 @@ router.get("/return_users_occupations", login, (req, res, next) => {
 
 router.get("/return_user", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         conn.query('select * from usuarios where id_usuario = ?', 
         [req.usuario.id_usuario], 
             (err, results) => {
@@ -311,12 +311,12 @@ router.post("/return_user_by_email", (req, res, next) => {
         return res.status(404).send({ error: "Erro na busca de usuário, email vazio!" });
     } else {
         mysql.getConnection((error, conn) => {
-            if (error) { return res.status(500).send({ error: error }) }
+            if (error) { return res.status(500).send(error) }
             conn.query('select * from usuarios where email = ?',
             [req.body.email], 
                 (error, results) => {
                     conn.release();
-                    if (error) { return res.status(500).send({ error: error }) };
+                    if (error) { return res.status(500).send(error) };
                     if (results.length == 0) {
                         const response = {
                             mensagem: "Usuário não cadastrado, prossiga para o cadastro!",
@@ -349,12 +349,12 @@ router.post("/return_user_by_email", (req, res, next) => {
 
 router.get("/get_name", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send(error) }
         conn.query('select nome from usuarios where id_usuario = ?',
         [req.usuario.id_usuario], 
             (error, results) => {
                 conn.release();
-                if (error) { return res.status(500).send({ error: error }) }
+                if (error) { return res.status(500).send(error) }
                 if (results.length > 0) {
                     const response = {
                         user_name: results.nome
@@ -371,12 +371,12 @@ router.get("/get_name", login, (req, res, next) => {
 router.get("/checkJWT", login, (req, res, next) => {
     userLevel.setUser(req.usuario.id_usuario);
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send(error) }
         conn.query('select * from usuarios where id_usuario = ?',
         [req.usuario.id_usuario], 
             (error, results) => {
                 conn.release();
-                if (error) { return res.status(500).send({ error: error }) }
+                if (error) { return res.status(500).send(error) }
                 if (results.length > 0) {
                     const response = {
                         mensagem: "Retorno de usuário " + req.usuario.id_usuario,
@@ -394,7 +394,7 @@ router.get("/checkJWT", login, (req, res, next) => {
 
 router.post("/find_users", (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         conn.query(`
                     select 
                         nome,
@@ -447,7 +447,7 @@ router.post("/find_users", (req, res, next) => {
 
 router.patch("/change_bio", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         if (req.body.user_bio.length < 3 || req.body.user_bio == "") {
             return res.status(401).send({ message: "Texto muito curto ou vazio" });
         }
@@ -468,7 +468,7 @@ router.patch("/change_bio", login, (req, res, next) => {
 
 router.patch("/exclude_occupation", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         conn.query("update usuarios set user_occupation = ? where id_usuario = ?",
         [req.body.user_occupation, req.usuario.id_usuario],
             (err, results) => {
@@ -485,7 +485,7 @@ router.patch("/exclude_occupation", login, (req, res, next) => {
 
 router.patch("/add_occupation", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
 
         conn.query('select user_occupation from usuarios where id_usuario = ?',
         [req.usuario.id_usuario], 
@@ -530,12 +530,12 @@ router.patch("/add_occupation", login, (req, res, next) => {
 
 router.get("/return_user_by_jwt", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send(error) }
         conn.query('select * from usuarios where id_usuario = ?',
         [req.usuario.id_usuario], 
             (error, results) => {
                 conn.release();
-                if (error) { return res.status(500).send({ error: error }) }
+                if (error) { return res.status(500).send(error) }
                 if (results.length > 0) {
                     const response = {
                         mensagem: "Retorno de usuário " + req.usuario.id_usuario,
@@ -552,7 +552,7 @@ router.get("/return_user_by_jwt", login, (req, res, next) => {
 
 router.patch("/exclude_photo", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send(error) }
         conn.query('SELECT profile_photo FROM usuarios WHERE id_usuario = ?',
         [req.usuario.id_usuario],
             (err, results) => {
@@ -583,7 +583,7 @@ router.patch("/exclude_photo", login, (req, res, next) => {
 
 router.patch("/exclude_banner", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send(error) }
         conn.query('SELECT user_cover_image FROM usuarios WHERE id_usuario = ?',
         [req.usuario.id_usuario],
             (err, results) => {
@@ -617,12 +617,12 @@ router.patch("/upload_photo", login, uploadConfig.upload.single('user_imagem'), 
         return res.status(500).send({ error: "Tipo de arquivo não suportado" })
     } else {
         mysql.getConnection((error, conn) => {
-            if (error) { return res.status(500).send({ error: error }) };
+            if (error) { return res.status(500).send(error) };
             conn.query('update usuarios set profile_photo = ? where id_usuario = ?',
             [req.file.transforms[0].location, req.usuario.id_usuario], 
                 (error, results) => {
                     conn.release();
-                    if (error) { return res.status(500).send({ error: error }) }
+                    if (error) { return res.status(500).send(error) }
                     if (results.changedRows != 0) {
                         const response = {
                             id_usuario: "Retorno de usuário " + req.usuario.id_usuario,
@@ -643,12 +643,12 @@ router.patch("/upload_banner", login, uploadConfig.upload.single('user_imagem'),
         return res.status(500).send({ error: "Tipo de arquivo não suportado" })
     } else {
         mysql.getConnection((error, conn) => {
-            if (error) { return res.status(500).send({ error: error }) }
+            if (error) { return res.status(500).send(error) }
             conn.query('update usuarios set user_cover_image = ? where id_usuario = ?',
             [req.file.transforms[0].location, req.usuario.id_usuario], 
                 (error, results) => {
                     conn.release();
-                    if (error) { return res.status(500).send({ error: error }) }
+                    if (error) { return res.status(500).send(error) }
                     if (results.changedRows != 0) {
                         const response = {
                             id_usuario: "Retorno de usuário " + req.usuario.id_usuario,
@@ -666,12 +666,12 @@ router.patch("/upload_banner", login, uploadConfig.upload.single('user_imagem'),
 
 router.post("/update_name", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send(error) }
         conn.query('update usuarios set nome = ? where id_usuario = ?',
         [req.body.nome, req.usuario.id_usuario], 
             (error, results) => {
                 conn.release();
-                if (error) { return res.status(500).send({ error: error }) }
+                if (error) { return res.status(500).send(error) }
                 if (results.changedRows != 0) {
                     const response = {
                         message: "Usuário alterado com sucesso",
@@ -689,7 +689,7 @@ router.post("/update_name", login, (req, res, next) => {
 
 router.post("/update_groups", (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         conn.query('select user_groups from usuarios where id_usuario = ?',
         [req.body.id],
             (err2, results2) => {
@@ -733,7 +733,7 @@ router.post("/update_groups", (req, res, next) => {
 router.post("/forgot_password", (req, res, next) => {
     try {
         mysql.getConnection((error, conn) => {
-            if (error) { return res.status(500).send({ error: error }) };
+            if (error) { return res.status(500).send(error) };
             conn.query('select id_usuario from usuarios where email = ?',
             [req.body.email],
                 (err, results) => {
@@ -773,7 +773,7 @@ router.post("/forgot_password", (req, res, next) => {
 
 router.post("/cadastro", (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) }
+        if (error) { return res.status(500).send(error) }
         conn.query('select * from usuarios where email = ?', [req.body.email],
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) }
@@ -812,7 +812,7 @@ router.post("/cadastro", (req, res, next) => {
 
 router.post("/login", (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         conn.query('select * from usuarios where email = ?', [req.body.email],
             (err, results) => {
                 if (err) { return res.status(500).send({ error: err }) };
@@ -859,7 +859,7 @@ router.post("/login", (req, res, next) => {
 
 router.post("/exclude_user", login, (req, res, next) => {
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         conn.query('select user_groups from usuarios where id_usuario = ?',
         [req.usuario.id_usuario],
             (err, results) => {

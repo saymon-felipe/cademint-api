@@ -208,7 +208,7 @@ router.post("/enter_closed_beta", (req, res, next) => {
     }
     
     mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({ error: error }) };
+        if (error) { return res.status(500).send(error) };
         conn.query('select * from usuarios where email = ?', 
             [email],
             (err, results) => {

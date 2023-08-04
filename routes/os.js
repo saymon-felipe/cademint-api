@@ -20,7 +20,7 @@ router.post('/return_os_list', login, (req, res, next) => {
                 return res.status(200).send(response);
             })
             .catch((error) => {
-                return res.status(500).send({ error: error });
+                return res.status(500).send(error);
             })
         } else {
             response.message = "Você não possui acesso a esse grupo";
@@ -29,7 +29,7 @@ router.post('/return_os_list', login, (req, res, next) => {
         }
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
@@ -49,7 +49,7 @@ router.post('/find', (req, res, next) => {
         return res.status(200).send(response);
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
@@ -82,7 +82,7 @@ router.post('/', login, (req, res, next) => {
         }
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
@@ -114,7 +114,7 @@ router.post('/task_comment', login, (req, res, next) => {
         }
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
@@ -133,7 +133,7 @@ router.post('/get_task_comment', login, (req, res, next) => {
         return res.status(200).send(response);
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
@@ -155,7 +155,7 @@ router.post('/like_task_comment', login, (req, res, next) => {
                 }
             })
             .catch((error) => {
-                return res.status(500).send({ error: error });
+                return res.status(500).send(error);
             })
         } else {
             _taskService.createLike(req.usuario.id_usuario, req.body.task_comment_id).then((createdLike) => {
@@ -164,12 +164,12 @@ router.post('/like_task_comment', login, (req, res, next) => {
                 }
             })
             .catch((error) => {
-                return res.status(500).send({ error: error });
+                return res.status(500).send(error);
             })
         }
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
@@ -197,7 +197,7 @@ router.patch('/', login, (req, res, next) => {
         return res.status(200).send(response);
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
@@ -220,7 +220,7 @@ router.post('/check_permission', login, (req, res, next) => {
         }
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
@@ -237,7 +237,7 @@ router.patch('/os_status', login, (req, res, next) => {
         return res.status(200).send(response);
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
@@ -254,7 +254,7 @@ router.delete('/delete_os', login, (req, res, next) => {
         return res.status(200).send(response);
     })
     .catch((error) => {
-        return res.status(500).send({ error: error });
+        return res.status(500).send(error);
     })
 });
 
