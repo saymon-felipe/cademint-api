@@ -286,9 +286,13 @@ let taskService = {
             })
         })
     },
-    returnGroup: function (group_id) {
+    returnGroup: function (group_id = "", group_name = "") {
         return new Promise((resolve, reject) => {
             let self = this;
+            let searchParam = group_id;
+            if (group_name != "") {
+                searchParam = group_name;
+            }
             functions.executeSql(
                 `
                     SELECT
@@ -297,10 +301,10 @@ let taskService = {
                         os_groups
                     WHERE   
                         groups_id = ?
-                `, [group_id]
+                `, [searchParam]
             ).then((results) => {
                 if (results.length == 0) {
-                    reject("Nenhum grupo com esse id");
+                    reject("Nenhum grupo encontrado");
                 }
                 let group_members_object = [];
                 self.returnGroupMembers(results[0].group_members).then((results2) => {
@@ -364,6 +368,207 @@ let taskService = {
                     reject(error);
                 })
             }
+        })
+    },
+    removeGroupPendingUser: function (group_id, email_requested) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        pending_users
+                    FROM
+                        os_groups
+                    WHERE
+                        groups_id = ?
+                `, [group_id]
+            ).then((results) => {
+                let pending_users = results[0].pending_users;
+                let pending_users_object = [];
+                if (pending_users == "") {
+                    resolve(false);
+                }
+                if (pending_users.indexOf(",") != -1) {
+                    pending_users_object = pending_users.split(",");
+                } else {
+                    pending_users_object = [pending_users];
+                }
+
+                pending_users_object = pending_users_object.filter(function (user) { return user != email_requested });
+
+                if (pending_users_object.length == 0) {
+                    pending_users_object = "";
+                }
+                if (pending_users_object.length == 1) {
+                    pending_users_object = pending_users_object.join();
+                }
+                if (pending_users_object.length > 1) {
+                    pending_users_object = pending_users_object.join(",");
+                }
+
+                functions.executeSql(
+                    `
+                        UPDATE
+                            os_groups
+                        SET
+                            pending_users = ?
+                        WHERE
+                            groups_id = ?
+                    `, [pending_users_object, group_id]
+                ).then((results2) => {
+                    functions.executeSql(
+                        `
+                            DELETE FROM
+                                group_tokens
+                            WHERE
+                                email_requested = ? AND group_id = ?
+                        `, [email_requested, group_id]
+                    ).then((results3) => {
+                        resolve(true);
+                    }).catch((error3) => {
+                        reject(error3);
+                    })
+                }).catch((error2) => {
+                    reject(error2);
+                })
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    requestUserToGroup: function (token, group_id, user_email, group_name) {
+        return new Promise((resolve, reject) => {
+            let self = this;
+            functions.executeSql(
+                `
+                    INSERT INTO
+                        group_tokens
+                        (token, group_id, email_requested, create_date)
+                    VALUE
+                        (?, ?, ?, CURRENT_TIMESTAMP())  
+                `, [token, group_id, user_email]
+            ).then((results) => {
+                let message = "Email de solicitação enviado";
+                functions.executeSql(
+                    `
+                        SELECT
+                            pending_users
+                        FROM
+                            os_groups
+                        WHERE
+                            groups_id = ?
+                    `, [group_id]
+                ).then((results2) => {
+                    if (results2[0].pending_users.indexOf(user_email) != -1) {
+                        message = "Esse email já possui um convite para participar do grupo";
+                    }
+
+                    let new_pending_users;
+                    if (results2[0].pending_users == "") {
+                        new_pending_users = user_email;
+                    } else {
+                        new_pending_users = results2[0].pending_users + ", " + user_email;
+                    }
+
+                    functions.executeSql(
+                        `
+                            UPDATE
+                                os_groups
+                            SET
+                                pending_users = ?
+                            WHERE
+                                groups_id = ?
+                        `, [new_pending_users, group_id]
+                    ).then((results3) => {
+                        if (self.sendGroupEmail(user_email, group_name, group_id, token)) {
+                            resolve(message);
+                        } else {
+                            reject("Falha no envio do email");
+                        }
+                    }).catch((error3) => {
+                        reject(error3);
+                    })
+                }).catch((error2) => {
+                    reject(error2);
+                })
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    excludeUser: function (group_id, user_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        group_members
+                    FROM
+                        os_groups
+                    WHERE
+                        groups_id = ?
+                `, [group_id]
+            ).then((results) => {
+                let group_members = results[0].group_members;
+                let group_members_array;
+
+                if (group_members.indexOf(",") != -1) {
+                    group_members_array = group_members.split(",");
+                } else {
+                    reject("Você não pode sair de um grupo em que você é o único participante.");
+                }
+
+                group_members_array.splice(group_members_array.findIndex(obj => obj == user_id), 1);
+                let newGroupMembers = group_members_array.join(",");
+
+                functions.executeSql(
+                    `
+                        UPDATE
+                            os_groups
+                        SET
+                            group_members = ?
+                        WHERE
+                            groups_id = ?
+                    `, [newGroupMembers, group_id]
+                ).then((results2) => {
+                    functions.executeSql(
+                        `
+                            SELECT 
+                                user_groups
+                            FROM
+                                usuarios
+                            WHERE
+                                id_usuario = ?
+                        `, [user_id]
+                    ).then((results3) => {
+                        let user_groups = results3[0].user_groups, new_user_groups;
+                        new_user_groups = user_groups.split(",");
+
+                        new_user_groups.splice(new_user_groups.findIndex(obj => obj == group_id), 1);
+
+                        new_user_groups = new_user_groups.join(",");
+
+                        functions.executeSql(
+                            `
+                                UPDATE
+                                    usuarios
+                                SET
+                                    user_groups = ?
+                                WHERE 
+                                    id_usuario = ?
+                            `, [new_user_groups, user_id]
+                        ).then((results4) => {
+                            resolve("Usuário " + user_id + " removido com sucesso do grupo " + group_id);
+                        }).catch((error4) => {
+                            reject(error4);
+                        }) 
+                    }).catch((error3) => {
+                        reject(error3);
+                    })
+                }).catch((error2) => {
+                    reject(error2);
+                })
+            }).catch((error) => {
+                reject(error);
+            })
         })
     }
 }

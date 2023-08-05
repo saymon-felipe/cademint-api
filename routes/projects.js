@@ -150,200 +150,115 @@ router.post("/return_group", (req, res, next) => {
         }
         return res.status(200).send(response);
     }).catch((error) => {
-        console.log(error)
         return res.status(500).send(error);
     })
 });
 
 router.post("/remove_invitation", login, (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) };
-        conn.query('select group_owner from os_groups where groups_id = ?',
-        [req.body.group_id],
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
-                if (req.usuario.id_usuario != results[0].group_owner) {
-                    const error = {
-                        message: "Você não é o dono desse grupo"
-                    }
-                    return res.status(401).send(error);
-                } else {
-                    conn.query('select pending_users from os_groups where groups_id = ?',
-                    [req.body.group_id],
-                        (err, results) => {
-                            if (err) { return res.status(500).send({ error: err }) };
-                            let pending_users = results[0].pending_users;
-                            let pending_users_object = [];
-                            if (pending_users == "") {
-                                return res.status(204).send({ message: "Não existem convites pendentes para esse grupo" });
-                            }
-                            if (pending_users.indexOf(",") != -1) {
-                                pending_users_object = pending_users.split(",");
-                            } else {
-                                pending_users_object = [pending_users];
-                            }
-                            pending_users_object = pending_users_object.filter(function (user) { return user != req.body.email });
-                            if (pending_users_object.length == 0) {
-                                pending_users_object = "";
-                            }
-                            if (pending_users_object.length == 1) {
-                                pending_users_object = pending_users_object.join();
-                            }
-                            if (pending_users_object.length > 1) {
-                                pending_users_object = pending_users_object.join(",");
-                            }
-                            conn.query('update os_groups set pending_users = ? where groups_id = ?',
-                            [pending_users_object, req.body.group_id],
-                                (err2, results2) => {
-                                    if (err2) { return res.status(500).send({ error: err2 }) };
-                                    conn.query('delete from group_tokens where email_requested = ? and group_id = ?',
-                                    [req.body.email, req.body.group_id],
-                                        (err3, results3) => {
-                                            if (err3) { return res.status(500).send({ error: err3 }) };
-                                            conn.release();
-                                            console.log(results3)
-                                            if (results3.affectedRows != 0) {
-                                                const response = {
-                                                    message: "Solicitação excluida com sucesso!"
-                                                }
-                                                return res.status(200).send(response);
-                                            } else {
-                                                return res.status(404).send({ error: "Esse grupo não possui nenhuma solicitação para o email informado" });
-                                            }
-                                        }
-                                    )
-                                }
-                            )
-                        }
-                    )
-                }
-            }
-        )
-    });
+    let response = {
+        message: "Convite removido com sucesso",
+        returnObj: {},
+        request: {
+            type: "POST",
+            status: 200
+        }
+    }
+    
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch((error) => {
+        response.message = error || "Permissão negada";
+        response.request.status = 401;
+        return res.status(401).send(response);
+    })
+    
+    _projectsService.removeGroupPendingUser(req.body.group_id, req.body.email).then((results) => {
+        if (!results) {
+            response.message = "Convite não encontrado";
+            return res.status(200).send(response);
+        }
+        return res.status(200).send(response);
+    }).catch((error) => {
+        console.log(error)
+        return res.status(500).send(error);
+    })
 });
 
 router.post("/return_group_by_name", (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) }
-        conn.query('select * from os_groups where group_name = ?',
-        [req.body.group_name], 
-            (error, results) => {
-                conn.release();
-                if (error) { return res.status(500).send(error) }
-                if (results.length > 0) {
-                    const response = {
-                        mensagem: "Retorno do grupo " + req.body.group_id,
-                        nome: results[0].group_name,
-                        group_id: results[0].groups_id,
-                        group_members: results[0].group_members,
-                        group_owner: results[0].group_owner,
-                        pending_users: results[0].pending_users
-                    }
-                    return res.status(200).send({ response });
-                } else {
-                    return res.status(404).send({ mensagem: "Nenhum grupo com esse id" });
-                }
+    let response = {
+        message: "Retorno do grupo '" + req.body.group_name + "'",
+        returnObj: {},
+        request: {
+            type: "POST",
+            status: 200
+        }
+    }
+
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch((error) => {
+        response.message = error || "Permissão negada";
+        response.request.status = 401;
+        return res.status(401).send(response);
+    })
+    
+    _projectsService.returnGroup("", req.body.group_name).then((results) => {
+        let response = {
+            message: "Retorno do grupo " + req.body.group_name,
+            returnObj: results,
+            request: {
+                type: "POST",
+                status: 200
             }
-        )
-    });
+        }
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 router.post("/request_user_to_group", login, (req, res, next) => {
     const token = crypto.randomBytes(20).toString('hex');
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({error: error})};
-        conn.query('insert into group_tokens(token, group_id, email_requested, create_date) values (?, ?, ?, CURRENT_TIMESTAMP())',
-            [token, req.body.group_id, req.body.user_email], 
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err })};
-                const response = {
-                    mensagem: {
-                        message_email: `Email de solicitação enviado`,
-                        message_token: "Token inserido com sucesso! Validade de 7 dias"
-                    },
-                    pending_group_id: req.body.group_id
-                }
-                conn.query('select pending_users from os_groups where groups_id = ?',
-                [req.body.group_id],
-                    (err2, results2) => {
-                        if (err2) { return res.status(500).send({ error: err2 })};
-                        if (results2[0].pending_users.indexOf(req.body.user_email) != -1) {
-                            return res.status(409).send({ message: "Esse email já possui um convite para participar do grupo." });
-                        }
-                        let new_pending_users;
-                        if (results2[0].pending_users == "") {
-                            new_pending_users = req.body.user_email;
-                        } else {
-                            new_pending_users = results2[0].pending_users + ", " + req.body.user_email;
-                        }
-                        conn.query('update os_groups set pending_users = ? where groups_id = ?',
-                        [new_pending_users, req.body.group_id],
-                            (err3, results3) => {
-                                if (err3) { return res.status(401).send({ error: err3 })};
-                                conn.release();
-                                if (_projectsService.sendGroupEmail(req.body.user_email, req.body.group_name, req.body.group_id, token)) {
-                                    return res.status(200).send({ response });
-                                } else {
-                                    return res.status(500).send({error: "Falha no envio do email"});
-                                }
-                            }    
-                        )
-                    }    
-                )
-            }
-        )
-    }); 
+
+    let response = {
+        message: "Email de solicitação enviado",
+        returnObj: {},
+        request: {
+            type: "POST",
+            status: 200
+        }
+    }
+
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch((error) => {
+        response.message = error || "Permissão negada";
+        response.request.status = 401;
+        return res.status(401).send(response);
+    })
+
+    _projectsService.requestUserToGroup(token, req.body.group_id, req.body.user_email, req.body.group_name).then((results) => {
+        response.message = results;
+        return res.status(200).send(response);
+    }).catch((error) => {
+        console.log(error)
+        return res.status(500).send(error);
+    }) 
 });
 
 router.post("/exclude_user", login, (req, res, next) => {
-    let group_id = req.body.group_id;
-    let user_id = req.body.id_usuario == null ? req.usuario.id_usuario : req.body.id_usuario;
-    let newGroupMembers;
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({error: error})};
-        conn.query('select group_members from os_groups where groups_id = ?',
-        [group_id], 
-            (err2, results2) => {
-                if (err2) { return res.status(500).send({ error: err2 }) };
-                let group_members = results2[0].group_members;
-                let group_members_array;
-                if (group_members.indexOf(",") != -1) {
-                    group_members_array = group_members.split(",");
-                } else {
-                    return res.status(401).send({ response: "Você não pode sair de um grupo em que você é o único participante!" });
-                }
-                group_members_array.splice(group_members_array.findIndex(obj => obj == user_id), 1);
-                newGroupMembers = group_members_array.join(",");
-                conn.query('update os_groups set group_members = ? where groups_id = ?',
-                [newGroupMembers, group_id],
-                (err3, results3) => {
-                    if (err3) { return res.status(500).send({ error: err3 }) };
-                    conn.query('select user_groups from usuarios where id_usuario = ?',
-                    [user_id],
-                        (err4, results4) => {
-                            if (err4) { return res.status(500).send({ error: err4 }) };
+    let response = {
+        message: "Email de solicitação enviado",
+        returnObj: {},
+        request: {
+            type: "POST",
+            status: 200
+        }
+    }
 
-                            let user_groups = results4[0].user_groups, new_user_groups;
-                            new_user_groups = user_groups.split(",");
-                            new_user_groups.splice(new_user_groups.findIndex(obj => obj == group_id), 1);
-                            new_user_groups = new_user_groups.join(",");
-                            conn.query('update usuarios set user_groups = ? where id_usuario = ?',
-                            [new_user_groups, user_id],
-                                (err5, results5) => {
-                                    if (err5) { return res.status(500).send({ error: err5 }) };
-                                    conn.release();
-                                    const response = {
-                                        message: `Usuário ${user_id} removido com sucesso do grupo ${group_id}`
-                                    }
-                                    return res.status(200).send(response);
-                                }   
-                            )
-                        }
-                    )
-                })
-            }
-        )
-    });
+    let group_id = req.body.group_id;
+    let user_id = req.body.user_id == null ? req.usuario.id_usuario : req.body.user_id;
+    _projectsService.excludeUser(group_id, user_id).then((results) => {
+        response.message = results;
+        return res.status(200).send(response);
+    }).catch((error) => {
+        console.log(error)
+        return res.status(500).send(error);
+    })
 });
 
 router.post("/enter_group_with_token", (req, res, next) => {
