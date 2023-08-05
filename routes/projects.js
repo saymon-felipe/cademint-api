@@ -79,82 +79,44 @@ router.patch("/group_image/:group_id", login, uploadConfig.upload.single('user_i
     if (req.file == undefined) {
         return res.status(500).send({ error: "Tipo de arquivo não suportado" });
     }
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) };
-        conn.query('select group_owner from os_groups where groups_id = ?',
-        [req.params.group_id],
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
-                if (req.usuario.id_usuario != results[0].group_owner) {
-                    conn.release();
-                    const error = {
-                        message: "Você não é o dono desse grupo"
-                    }
-                    return res.status(401).send(error);
-                } else {
-                    conn.query('update os_groups set image = ? where groups_id = ?',
-                    [req.file.transforms[0].location, req.params.group_id], 
-                        (err2, results2) => {
-                            conn.release();
-                            if (err2) { return res.status(500).send({ error: err2 }) };
-                            if (results.changedRows != 0) {
-                                const response = {
-                                    message: "Imagem do grupo " + req.params.group_id + " alterada com sucesso!",
-                                    group_image_path: req.file.transforms[0].location
-                                }
-                                return res.status(200).send(response);
-                            }
-                            return res.status(404).send({ mensagem: "Nenhum grupo com esse id" });
-                        }
-                    )
-                }
+
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.params.group_id).then().catch(() => {
+        return res.status(401).send({ error: "Você não é administrador desse grupo" });
+    })
+
+    _projectsService.changeGroupImage(req.file.transforms[0].location, req.params.group_id).then((results) => {
+        let response = {
+            message: "Imagem do grupo alterada com sucesso",
+            returnObj: {},
+            request: {
+                type: "PATCH",
+                status: 200
             }
-        ) 
-    });
+        }
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 router.patch("/exclude_group_image", login, (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) };
-        conn.query('select group_owner from os_groups where groups_id = ?',
-        [req.body.group_id],
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
-                if (req.usuario.id_usuario != results[0].group_owner) {
-                    conn.release();
-                    const error = {
-                        message: "Você não é o dono desse grupo"
-                    }
-                    return res.status(401).send(error);
-                } else {
-                    conn.query('SELECT image FROM os_groups WHERE groups_id = ?',
-                    [req.body.group_id],
-                        (err2, results2) => {
-                            if (err2) { return res.status(500).send({ error: err2 }) };
-                            let photo_url = results2[0].image.split("/")[3];
-                            uploadConfig.deleteFromS3(photo_url);
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch(() => {
+        return res.status(401).send({ error: "Você não é administrador desse grupo" });
+    })
 
-                            conn.query('update os_groups set image = ? where groups_id = ?',
-                            [process.env.URL_API + "/public/cademint-group.png", req.body.group_id], 
-                                (err3, results3) => {
-                                    conn.release();
-                                    if (err3) { return res.status(500).send({ error: err3 }) };
-                                    if (results3.changedRows != 0) {
-                                        const response = {
-                                            group_id: "Retorno do grupo " + req.body.group_id,
-                                            action: "Imagem excluída com sucesso"
-                                        }
-                                        return res.status(200).send({ response });
-                                    }
-                                    return res.status(304).send({ mensagem: "Nenhuma alteração feita" });
-                                }
-                            )
-                        }
-                    );
-                }
+    _projectsService.excludeGroupImage(req.body.group_id).then((results) => {
+        let response = {
+            message: "Imagem do grupo excluída com sucesso",
+            returnObj: {},
+            request: {
+                type: "PATCH",
+                status: 200
             }
-        )
-    });
+        }
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 router.post("/check_permission", login, (req, res, next) => {
@@ -177,58 +139,20 @@ router.post("/check_permission", login, (req, res, next) => {
 });
 
 router.post("/return_group", (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) };
-        conn.query('select * from os_groups where groups_id = ?',
-        [req.body.group_id], 
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
-                if (results.length > 0) {
-                    let group_members = results[0].group_members.split(",");
-                    let group_members_objects = [];
-                    for (let i in group_members) {
-                        conn.query('select * from usuarios where id_usuario = ?',
-                        [group_members[i]],
-                            (err2, results2) => {
-                                if (err2) { return res.status(500).send({ error: err2 }) };
-                                group_members_objects[i] = {
-                                    email: results2[0].email,
-                                    nome: results2[0].nome,
-                                    id_usuario: results2[0].id_usuario,
-                                    profile_photo: results2[0].profile_photo,
-                                    user_groups: results2[0].user_groups
-                                }
-                            }
-                        )
-                    }
-                    setTimeout(() => {
-                        conn.release();
-                        let pending_users = results[0].pending_users;
-                        let pending_users_object = "";
-                        if (pending_users.indexOf(",") != -1) {
-                            pending_users_object = pending_users.split(",");
-                        } else if (pending_users.length > 0) {
-                            pending_users_object = [pending_users];
-                        }
-                        const response = {
-                            mensagem: "Retorno do grupo " + req.body.group_id,
-                            nome: results[0].group_name,
-                            group_id: req.body.group_id,
-                            group_members: results[0].group_members,
-                            group_members_objects: group_members_objects,
-                            group_owner: results[0].group_owner,
-                            pending_users: pending_users_object,
-                            image: results[0].image,
-                            group_description: results[0].group_description
-                        }
-                        return res.status(200).send({ response });
-                    }, 500);
-                } else {
-                    return res.status(404).send({ mensagem: "Nenhum grupo com esse id" });
-                }
+    _projectsService.returnGroup(req.body.group_id).then((results) => {
+        let response = {
+            message: "Retorno do grupo " + req.body.group_id,
+            returnObj: results,
+            request: {
+                type: "POST",
+                status: 200
             }
-        )
-    });
+        }
+        return res.status(200).send(response);
+    }).catch((error) => {
+        console.log(error)
+        return res.status(500).send(error);
+    })
 });
 
 router.post("/remove_invitation", login, (req, res, next) => {

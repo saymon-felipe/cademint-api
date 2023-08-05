@@ -2,6 +2,7 @@ const functions = require("../utils/functions");
 const crypto = require('crypto');
 const sendEmails = require("../config/sendEmail");
 const emailTemplates = require("../templates/emailTemplates");
+const uploadConfig = require('../config/upload');
 require('dotenv').config();
 
 let taskService = {
@@ -223,6 +224,146 @@ let taskService = {
             }).catch((error) => {
                 reject(error);
             })
+        })
+    },
+    changeGroupImage: function (fileLocation, group_id) {
+        return new Promise((resolve, reject) => {
+            this.excludeGroupImage(group_id).then((results) => {
+                functions.executeSql(
+                    `
+                        UPDATE 
+                            os_groups
+                        SET
+                            image = ?
+                        WHERE
+                            groups_id = ?
+                    `, [fileLocation, group_id]
+                ).then((results2) => {
+                    resolve();
+                }).catch((error2) => {
+                    reject(error2);
+                })
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+        
+    },
+    excludeGroupImage: function (group_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT 
+                        image
+                    FROM
+                        os_groups
+                    WHERE
+                        groups_id = ?
+                `, [group_id]
+            ).then((results) => {
+                let photo_url = results[0].image.split("/")[3];
+                if (photo_url != "public") {
+                    uploadConfig.deleteFromS3(photo_url);
+                    functions.executeSql(
+                        `
+                            UPDATE
+                                os_groups
+                            SET
+                                image = ?
+                            WHERE
+                                groups_id = ?
+                        `, [process.env.URL_API + "/public/cademint-group.png", group_id]
+                    ).then((results2) => {
+                        resolve();
+                    }).catch((error2) => {
+                        reject(error2);
+                    })
+                } else {
+                    resolve();
+                }
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnGroup: function (group_id) {
+        return new Promise((resolve, reject) => {
+            let self = this;
+            functions.executeSql(
+                `
+                    SELECT
+                        *
+                    FROM
+                        os_groups
+                    WHERE   
+                        groups_id = ?
+                `, [group_id]
+            ).then((results) => {
+                if (results.length == 0) {
+                    reject("Nenhum grupo com esse id");
+                }
+                let group_members_object = [];
+                self.returnGroupMembers(results[0].group_members).then((results2) => {
+                    group_members_object = results2;
+
+                    let pending_users = results[0].pending_users;
+                    let pending_users_object = "";
+
+                    if (pending_users.indexOf(",") != -1) {
+                        pending_users_object = pending_users.split(",");
+                    } else if (pending_users.length > 0) {
+                        pending_users_object = [pending_users];
+                    }
+
+                    let group = {
+                        nome: results[0].group_name,
+                        group_id: group_id,
+                        group_members: results[0].group_members,
+                        group_members_objects: group_members_object,
+                        group_owner: results[0].group_owner,
+                        pending_users: pending_users_object,
+                        image: results[0].image,
+                        group_description: results[0].group_description
+                    }
+                    resolve(group);
+                }).catch((error2) => {
+                    reject(error2);
+                })
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnGroupMembers: function (group_members) {
+        return new Promise((resolve, reject) => {
+            let group_members_array = group_members.split(",");
+            let group_members_object = [];
+            for (let i = 0; i < group_members_array.length; i++) {
+                functions.executeSql(
+                    `
+                        SELECT
+                            *
+                        FROM
+                            usuarios
+                        WHERE
+                            id_usuario = ?
+                    `, [group_members_array[i]]
+                ).then((results) => {
+                    let user = {
+                        email: results[0].email,
+                        nome: results[0].nome,
+                        id_usuario: results[0].id_usuario,
+                        profile_photo: results[0].profile_photo,
+                        user_groups: results[0].user_groups
+                    }
+                    group_members_object.push(user);
+                    if (i == group_members_array.length - 1) {
+                        resolve(group_members_object);
+                    }
+                }).catch((error) => {
+                    reject(error);
+                })
+            }
         })
     }
 }

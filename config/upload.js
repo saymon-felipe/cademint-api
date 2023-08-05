@@ -1,7 +1,6 @@
 const aws = require('aws-sdk');
 const multerS3 = require('multer-s3-transform');
 const multer = require('multer');
-const util = require('util');
 const sharp = require('sharp');
 
 const imageWidth = 300;
