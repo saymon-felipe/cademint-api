@@ -242,7 +242,7 @@ router.post("/request_user_to_group", login, (req, res, next) => {
 
 router.post("/exclude_user", login, (req, res, next) => {
     let response = {
-        message: "Email de solicitação enviado",
+        message: "Usuário excluido do grupo com sucesso",
         returnObj: {},
         request: {
             type: "POST",
@@ -324,7 +324,7 @@ router.post("/enter_group_with_token", (req, res, next) => {
                         }
                     )
                 } else {
-                    return res.status(400).send({ error: "Token, id do grupo e email inválidos!"});
+                    return res.status(400).send({ error: "Token, id do grupo ou email inválidos!"});
                 }
             }
         )
