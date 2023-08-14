@@ -570,6 +570,108 @@ let taskService = {
                 reject(error);
             })
         })
+    },
+    enterGroupWithToken: function (token, group_id, email_requested, user_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        *
+                    FROM
+                        group_tokens
+                    WHERE
+                        token = ? AND group_id = ? AND email_requested = ?
+                `, [token, group_id, email_requested]
+            ).then((results) => {
+                if (results.length > 0) {
+
+                    functions.executeSql(
+                        `
+                            SELECT
+                                *
+                            FROM
+                                os_groups
+                            WHERE
+                                groups_id = ?
+                        `, [group_id]
+                    ).then((results2) => {
+                        if (results2[0] == undefined) {
+                            reject("Grupo não encontrado!");
+                        }
+
+                        let group_members, pending_users;
+                        group_members = results2[0].group_members;
+                        pending_users = results2[0].pending_users;
+
+                        if (pending_users.indexOf(",") != -1) {
+                            pending_users = pending_users.split(",");
+                            pending_users.forEach((item, index, array) => {
+                                if (array[index] == email_requested) {
+                                    pending_users.splice(array[index], 1);
+                                }
+                            })
+                            pending_users.join(",");
+                        } else {
+                            if (pending_users.indexOf(email_requested) != -1) {
+                                pending_users = "";
+                            }
+                        }
+                        group_members += "," + user_id;
+
+                        let user_groups;
+                        functions.executeSql(
+                            `
+                                UPDATE
+                                    os_groups
+                                SET
+                                    group_members = ?, pending_users = ?
+                                WHERE
+                                    groups_id = ?
+                            `, [group_members, pending_users, group_id]
+                        ).then((results3) => {
+                            functions.executeSql(
+                                `
+                                    SELECT
+                                        user_groups
+                                    FROM
+                                        usuarios
+                                    WHERE
+                                        id_usuario = ?
+                                `, [user_id]
+                            ).then((results4) => {
+                                user_groups = results4[0].user_groups;
+                                user_groups += "," + group_id;
+
+                                functions.executeSql(
+                                    `
+                                        UPDATE
+                                            usuarios
+                                        SET
+                                            user_groups = ?
+                                        WHERE
+                                            id_usuario = ?
+                                    `, [user_groups, user_id]
+                                ).then((results5) => {
+                                    resolve(`Usuário ${user_id} inserido no grupo ${group_id}, e grupo ${group_id} adicionado ao usuário ${user_id}`);
+                                }).catch((error5) => {
+                                    reject(error5);
+                                })
+                            }).catch((error4) => {
+                                reject(error4);
+                            })
+                        }).catch((error3) => {
+                            reject(error3);
+                        })
+                    }).catch((error2) => {
+                        reject(error2);
+                    })
+                } else {
+                    reject("Token, id do grupo ou email inválidos!");
+                }
+            }).catch((error) => {
+                reject(error);
+            })
+        })
     }
 }
 

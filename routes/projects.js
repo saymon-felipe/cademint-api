@@ -267,68 +267,21 @@ router.post("/enter_group_with_token", (req, res, next) => {
     let email_requested = req.body.email_requested;
     let token = req.body.token;
 
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send({error: error})};
-        conn.query('select * from group_tokens where token = ? and group_id = ? and email_requested = ?',
-            [token, group_id, email_requested], 
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) }
-                if (results.length != 0) {
-                    let group_members, pending_users;
-                    conn.query('select * from os_groups where groups_id = ?',
-                    [group_id], 
-                        (err2, results2) => {
-                            if (err2) { return res.status(500).send({ error: err2 }) };
-                            if (results2[0] == undefined) {
-                                return res.status(404).send({ message: "Grupo não encontrado!" });
-                            }
-                            group_members = results2[0].group_members;
-                            pending_users = results2[0].pending_users;
-                            if (pending_users.indexOf(",") != -1) {
-                                pending_users = pending_users.split(",");
-                                pending_users.forEach((item, index, array) => {
-                                    if (array[index] == email_requested) {
-                                        pending_users.splice(array[index], 1);
-                                    }
-                                })
-                                pending_users.join(",");
-                            } else {
-                                if (pending_users.indexOf(email_requested) != -1) {
-                                    pending_users = "";
-                                }
-                            }
-                            group_members += "," + user_id;
-                            let user_groups;
-                            conn.query('update os_groups set group_members = ?, pending_users = ? where groups_id = ?',
-                            [group_members, pending_users, group_id],
-                            (err3, results3) => {
-                                if (err3) { return res.status(500).send({ error: err3 }) };
-                                conn.query('select user_groups from usuarios where id_usuario = ?',
-                                [user_id],
-                                (err4, results4) => {
-                                    if (err4) { return res.status(500).send({ error: err4 }) };
-                                    user_groups = results4[0].user_groups;
-                                    user_groups += "," + group_id;
-                                    conn.query('update usuarios set user_groups = ? where id_usuario = ?',
-                                    [user_groups, user_id],
-                                    (err5, results5) => {
-                                        if (err5) { return res.status(500).send({ error: err5 }) };
-                                        conn.release();
-                                        const response = {
-                                            mensagem: `Usuário ${user_id} inserido no grupo ${group_id}, e grupo ${group_id} adicionado ao usuário ${user_id}` 
-                                        }
-                                        return res.status(200).send({ response });
-                                    })
-                                })
-                            })
-                        }
-                    )
-                } else {
-                    return res.status(400).send({ error: "Token, id do grupo ou email inválidos!"});
-                }
-            }
-        )
-    });
+    let response = {
+        message: "",
+        returnObj: {},
+        request: {
+            type: "POST",
+            status: 200
+        }
+    }
+
+    _projectsService.enterGroupWithToken(token, group_id, email_requested, user_id).then((results) => {
+        response.message = results;
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 function excludeGroupFromUsers(conn, res, user_id, group_id) {
