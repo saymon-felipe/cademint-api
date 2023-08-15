@@ -197,10 +197,14 @@ let taskService = {
                         groups_id = ?
                 `, [group_id]
             ).then((results) => {
-                if (user_id != results[0].group_owner) {
-                    reject();
+                if (results.length == 0) {
+                    reject("Grupo não encontrado");
                 }
-                resolve();
+                if (user_id != results[0].group_owner) {
+                    reject("Acesso negado!");
+                } else {
+                    resolve();
+                }
             }).catch((error) => {
                 reject(error);
             })
@@ -668,6 +672,55 @@ let taskService = {
                 } else {
                     reject("Token, id do grupo ou email inválidos!");
                 }
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    excludeGroup: function (group_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        group_members
+                    FROM
+                        os_groups
+                    WHERE
+                        groups_id = ?
+                `, [group_id]
+            ).then((results) => {
+                let group_members = results[0].group_members, new_group_members;
+                let excludePromises = [];
+
+                if (group_members.indexOf(",") != -1) {
+                    new_group_members = group_members.split(",");
+                    for (let i = 0; i < new_group_members.length; i++) {
+                        excludePromises.push(this.excludeUser(group_id, new_group_members[i]));
+                    }
+                } else {
+                    new_group_members = group_members;
+                    excludePromises.push(this.excludeUser(group_id, new_group_members));
+                }
+
+                excludePromises.push(this.excludeUser(group_id, 1));
+                excludePromises.push(this.excludeUser(group_id, 2)); //Remover usuarios default
+
+                Promise.all(excludePromises).then(() => {
+                    return functions.executeSql(
+                        `
+                            DELETE FROM
+                                os_groups
+                            WHERE
+                                groups_id = ?
+                        `, [group_id]
+                    )
+                }).then(() => {
+                    resolve("Grupo excluído com sucesso!");
+                }).catch((error2) => {
+                    reject(error2);
+                })
+
+                
             }).catch((error) => {
                 reject(error);
             })

@@ -1,15 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const mysql = require("../mysql").pool;
 const login = require("../middleware/login");
 const crypto = require('crypto');
 const uploadConfig = require('../config/upload');
 const _projectsService = require("../services/projectsService");
-
-function removeGroupFromDefaultMembers(conn, res, group_id) {
-    excludeGroupFromUsers(conn, res, 1, group_id);
-    excludeGroupFromUsers(conn, res, 2, group_id);
-}
 
 router.get("/", (req, res, next) => {
     let response = {
@@ -284,75 +278,30 @@ router.post("/enter_group_with_token", (req, res, next) => {
     })
 });
 
-function excludeGroupFromUsers(conn, res, user_id, group_id) {
-    conn.query('select * from usuarios where id_usuario = ?',
-    [user_id], 
-        (err, results) => {
-            if (err) { return res.status(500).send({ error: err }) };
-            if (results[0] != undefined) {
-                let user_groups = [];
-                if (results[0].user_groups.indexOf(",") != -1) {
-                    user_groups = results[0].user_groups.split(",");
-                } 
-                user_groups.splice(user_groups.indexOf(group_id), 1);
-                let new_user_groups;
-                for (let i in user_groups) {
-                    if (i > 0) {
-                        new_user_groups += "," + user_groups[i];
-                    } else { 
-                        new_user_groups = user_groups[i];
-                    }
-                }
-                conn.query('update usuarios set user_groups = ? where id_usuario = ?',
-                [new_user_groups, user_id], 
-                    (err2, results2) => { 
-                        if (err2) { return res.status(500).send({ error: err2 }) };
-                        return true;
-                    }
-                )
-            } else {
-                return res.status(404).send({ error: "Nenhum usuário com esse id" });
-            }
+router.post('/delete_group', login, (req, res, next) => {
+    let response = {
+        message: "",
+        returnObj: {},
+        request: {
+            type: "POST",
+            status: 200
         }
-    )
-}
+    }
 
-router.delete('/delete_group', login, (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) };
-        conn.query(
-            'select group_members from os_groups where groups_id = ?',
-            [req.body.groups_id],
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
-                let group_members = results[0].group_members, new_group_members;
-                
-                if (group_members.indexOf(",") != -1) {
-                    new_group_members = group_members.split(",");
-                    for (let i = 0; i < new_group_members.length; i++) {
-                        excludeGroupFromUsers(conn, res, new_group_members[i], req.body.groups_id);
-                    }
-                } else {
-                    new_group_members = group_members;
-                    excludeGroupFromUsers(conn, res, new_group_members, req.body.groups_id);
-                }
-                removeGroupFromDefaultMembers(conn, res, req.body.groups_id);
-                conn.query(
-                    'delete from os_groups where groups_id = ?',
-                    [req.body.groups_id],
-                    (err2, results2) => {
-                        conn.release();
-                        if (err2) { return res.status(500).send({ error: err2 }) }
-                        const response = {
-                            feedback: "Grupo removido com sucesso!"
-                        }
-                        return res.status(202).send(response);
-                    }
-                );
-            }
-        );
-        
-    });
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.groups_id).then().catch((error) => {
+        console.log(error);
+        response.message = error || "Permissão negada";
+        response.request.status = 401;
+        return res.status(401).send(response);
+    })
+
+    _projectsService.excludeGroup(req.body.groups_id).then((results) => {
+        response.message = results;
+        return res.status(200).send(response);
+
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 module.exports = router;
