@@ -8,6 +8,7 @@ const uploadConfig = require('../config/upload');
 const userLevel = require('../custom/userLevel');
 const crypto = require('crypto');
 const email = require('../config/email');
+const _userService = require("../services/userService");
 
 async function sendResetPasswordEmail(token, user_email) {
     const mailSent = await email.sendMail({
@@ -56,254 +57,86 @@ function createResetPasswordEmail(token) {
 }
 
 router.post("/validate_reset_password_token", (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) };
-        conn.query(`select reset_password_token from usuarios where reset_password_token = '${req.body.token}' and reset_password_require_date >= date_sub(current_timestamp(), interval 30 minute)`,
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
-                conn.release();
-                if (results.length == 0) {
-                    const errorResponse = {
-                        error: "Token para redefinição de senha expirado"
-                    }
-                    return res.status(401).send(errorResponse);
-                }
-                const response = {
-                    message: "Token para redefinição de senha válido"
-                }
-                return res.status(200).send(response);
+    _userService.checkResetPasswordToken(req.body.token).then((results) => {
+        let response = {
+            message: results,
+            returnObj: {},
+            request: {
+                type: "POST",
+                status: 200
             }
-        )
-    });
+        }
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 router.patch("/change_password", (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) };
-        conn.query(`select reset_password_token, senha, id_usuario from usuarios where reset_password_token = '${req.body.token}' and reset_password_require_date >= date_sub(current_timestamp(), interval 30 minute)`,
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
-                if (results.length == 0) {
-                    const errorResponse = {
-                        error: "Token para redefinição de senha expirado"
-                    }
-                    return res.status(401).send(errorResponse);
-                }
-                bcrypt.compare(req.body.senha, results[0].senha, (errCompare, result) => {
-                    if (!result) {
-                        bcrypt.hash(req.body.senha, 10, (errBcrypt, hash) => {
-                            if (errBcrypt) {
-                                return res.status(500).send({ error: errBcrypt });
-                            }
-                            conn.query(`update usuarios set senha = ? where id_usuario = ?`, 
-                                [hash, results[0].id_usuario],
-                                (err2, results2) => {
-                                    if (err2) { return res.status(500).send({ error: err2 }) };
-                                    
-                                    conn.query('update usuarios set reset_password_token = ? where id_usuario = ?',
-                                    ["", results[0].id_usuario],
-                                        (err3, results3) => {
-                                            if (err3) { console.log(err3);return res.status(500).send({ error: err3 }) };
-                                            conn.release();
-
-                                            const response = {
-                                                mensagem: "Senha alterada com sucesso!"
-                                            }
-                                            return res.status(201).send(response);
-                                        }
-                                    )
-                                }
-                            )
-                        });
-                    } else {
-                        conn.release();
-                        return res.status(409).send({ error: "A senha não pode ser igual a anterior" });
-                    }
-                });
+    _userService.resetPassword(req.body.token, req.body.senha).then((results) => {
+        let response = {
+            message: results,
+            returnObj: {},
+            request: {
+                type: "PATCH",
+                status: 200
             }
-        )
-    });
+        }
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 router.get("/", (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) }
-        conn.query('select * from usuarios', 
-            (error, results) => {
-                conn.release();
-                if (error) { return res.status(500).send(error) }
-                if (results.length > 0) {
-                    const response = {
-                        mensagem: "Retorno de todos os usuários",
-                        lista_de_usuarios: results.map(users => {
-                            return {
-                                id_usuario: users.id_usuario,
-                                nome: users.nome
-                            }
-                        }) 
-                    }
-                    return res.status(200).send({ response });
-                } else {
-                    return res.status(404).send({ mensagem: "Nenhum usuário cadastrado" });
-                }
+    _userService.returnUsers().then((results) => {
+        let response = {
+            message: "Retorno de todos os usuários",
+            returnObj: results,
+            request: {
+                type: "PATCH",
+                status: 200
             }
-        )
-    });
+        }
+
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 router.get("/return_users_occupations", login, (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) }
-        conn.query('select user_occupation from usuarios where id_usuario = ?', 
-        [req.usuario.id_usuario],
-            (error, results) => {
-                conn.release();
-                if (error) { return res.status(500).send(error) }
-                
-                const response = {
-                    user_occupations: results[0].user_occupation,
-                    message: "Retorno dos cargos do usuario " + req.usuario.id_usuario
-                }   
-
-                return res.status(200).send(response);
+    _userService.returnUserOccupations(req.usuario.id_usuario).then((results) => {
+        let response = {
+            message: "Retorno dos cargos do usuario",
+            returnObj: results,
+            request: {
+                type: "PATCH",
+                status: 200
             }
-        )
-    });
+        }
+
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 router.get("/return_user", login, (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) };
-        conn.query('select * from usuarios where id_usuario = ?', 
-        [req.usuario.id_usuario], 
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) }
-                if (results.length > 0) {
-                    let user_groups = results[0].user_groups.split(",");
-                    let user_groups_object = [];
-                    let user_groups_id = "";
-                    for (let i in user_groups) {
-                        conn.query('select * from os_groups where groups_id = ?',
-                        [user_groups[i]], 
-                            (err2, results2) => {
-                                if (err2) { return res.status(500).send({ error: err2 }) };
-                                if (results2[0] != undefined) {
-                                    let group_members_object = [], pending_users = results2[0].pending_users, pending_members_array = [];
-                                    if (pending_users.indexOf(",")) { //Se entrar aqui significa que existe mais de um email na lista de usuarios pendentes
-                                        pending_members_array = pending_users.split(",");
-                                    } else {
-                                        pending_members_array.push(results2[0].pending_users);
-                                    }
-                                    let resultsGroupMembers = results2[0].group_members.split(",");
-                                    for (let j in resultsGroupMembers) {
-                                        conn.query('select * from usuarios where id_usuario = ?',
-                                        [resultsGroupMembers[j]],
-                                            (err3, results3) => {
-                                                if (err3) { return res.status(500).send({ error: err3 }) };
-                                                group_members_object[j] = {
-                                                    nome: results3[0].nome,
-                                                    email: results3[0].email,
-                                                    id_usuario: results3[0].id_usuario,
-                                                    profile_photo: results3[0].profile_photo,
-                                                    user_groups: results3[0].user_groups
-                                                }
-                                            }
-                                        )
-                                        
-                                    }
-                                    setTimeout(() => {
-                                        user_groups_object[i] = {
-                                            groups_id: results2[0].groups_id,
-                                            group_name: results2[0].group_name,
-                                            group_members: group_members_object,
-                                            group_owner: results2[0].group_owner,
-                                            pending_users: pending_members_array,
-                                            image: results2[0].image,
-                                            group_description: results2[0].group_description
-                                        }
-                                    }, 150)
-                                    
-                                    if (i == 0) {
-                                        user_groups_id = results2[0].groups_id;
-                                    } else {
-                                        user_groups_id += "," + results2[0].groups_id;
-                                    }
-                                }
-                            }
-                        )
-                    }
-                    setTimeout(() => {
-                        let user_medals = results[0].user_medals;
-                        let user_achievements = results[0].user_achievements;
-                        let user_achievements_object = [];
-                        let user_medals_object = [];
-                        if (user_medals.indexOf("," != -1)) {
-                            user_medals = user_medals.split(",");
-                        } 
-                        if (user_achievements.indexOf("," != -1)) {
-                            user_achievements = user_achievements.split(",");
-                        } 
-                        if (user_achievements != "") {
-                            for (let i = 0; i < user_achievements.length; i++) {
-                                conn.query('select * from achievements where id = ?',
-                                [user_achievements[i]],
-                                    (err, results) => {
-                                        if (err) { return res.status(500).send(err) };
-                                        let achievements = {
-                                            id: results[0].id,
-                                            achievements_name: results[0].achievements_name,
-                                            achievements_description: results[0].achievements_description
-                                        }
-                                        user_achievements_object.push(achievements);
-                                    }
-                                )
-                            }
-                        }
-                        if (user_medals != "") {
-                            for (let i = 0; i < user_medals.length; i++) {
-                                conn.query('select * from medals where id = ?',
-                                [user_medals[i]],
-                                    (err, results) => {
-                                        if (err) { return res.status(500).send(err) };
-                                        let medal = {
-                                            id: results[0].id,
-                                            medal_name: results[0].medal_name,
-                                            medal_description: results[0].medal_description
-                                        }
-                                        user_medals_object.push(medal);
-                                    }
-                                )
-                            }
-                        }
-                        
-                        setTimeout(() => {
-                            conn.release();
-                            const response = {
-                                mensagem: "Retorno de usuário " + req.usuario.id_usuario,
-                                id_usuario: req.usuario.id_usuario,
-                                email: req.usuario.email,
-                                nome: results[0].nome,
-                                profile_photo: results[0].profile_photo,
-                                user_groups: user_groups_object,
-                                user_groups_id: user_groups_id,
-                                user_medals: user_medals_object,
-                                user_achievements: user_achievements_object,
-                                user_level: results[0].user_level,
-                                level_progress: results[0].level_progress,
-                                user_cover_image: results[0].user_cover_image,
-                                user_occupation: results[0].user_occupation,
-                                user_bio: results[0].user_bio
-                            }
-                           return res.status(200).send({ response });
-                        }, 200);
-                    }, 200);
-                } else {
-                    conn.release();
-                    return res.status(404).send({ mensagem: "Nenhum usuário com esse id" });
-                }
+    _userService.returnUser(req.usuario.id_usuario).then((results) => {
+        let response = {
+            message: "Retorno do usuário " + req.usuario.id_usuario,
+            returnObj: results,
+            request: {
+                type: "PATCH",
+                status: 200
             }
-        )
-    });
+        }
+
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 router.post("/return_user_by_email", (req, res, next) => {
