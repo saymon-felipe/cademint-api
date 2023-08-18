@@ -215,11 +215,11 @@ let userService = {
                         let user_achievements_object = [];
                         let user_medals_object = [];
                         
-                        if (user_medals.indexOf("," != -1)) {
+                        if (user_medals.indexOf(",") != -1) {
                             user_medals = user_medals.split(",");
                         } 
 
-                        if (user_achievements.indexOf("," != -1)) {
+                        if (user_achievements.indexOf(",") != -1) {
                             user_achievements = user_achievements.split(",");
                         } 
 
