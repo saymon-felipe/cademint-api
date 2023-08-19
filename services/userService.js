@@ -73,33 +73,6 @@ let userService = {
     returnUsers: function () {
         return new Promise((resolve, reject) => {
 
-            functions.executeSql(
-                `
-                    SELECT
-                        email,
-                        nome,
-                        id_usuario,
-                        profile_photo,
-                        user_groups,
-                        user_level, 
-                        level_progress,
-                        user_cover_image,
-                        user_medals,
-                        user_achievements,
-                        user_bio,
-                        user_occupation
-                    FROM
-                        usuarios
-                `
-            ).then((results) => {
-                if (results.length > 0) {
-                    resolve(results);
-                } else {
-                    reject("Nenhum usuário cadastrado");
-                }
-            }).catch((error) => {
-                reject(error);
-            })
         })
     },
     returnUserOccupations: function (userId) {
@@ -107,14 +80,246 @@ let userService = {
             functions.executeSql(
                 `
                     SELECT
-                        user_occupation
+                        *
                     FROM
-                        usuarios
+                        user_occupations
                     WHERE
-                        id_usuarios = ?
+                        user_id = ?
                 `, [userId]
             ).then((results) => {
-                resolve(results[0].user_occupation);
+                resolve(results);
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    addOccupation: function (userId, occupation) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        count(id)
+                    FROM
+                        user_occupations
+                    WHERE
+                        user_id = ?
+                `, [userId]
+            ).then((results) => {
+                if (results.length == 5) {
+                    reject("Você já possui o numero máximo de cargos permitidos");
+                } else {
+                    functions.executeSql(
+                        `
+                            INSERT INTO
+                                user_occupations
+                                (user_id, occupation_name)
+                            VALUES
+                                (?, ?)
+                        `, [userId, occupation]
+                    ).then((results2) => {
+                        resolve();
+                    }).catch((error2) => {
+                        reject(error2);
+                    })
+                }
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnSingleUser: function (userId) {
+        return new Promise((resolve, reject) => {
+            let userAchievements;
+            let userMedals;
+            let userOccupations;
+
+            let promises = [];
+
+            promises.push(
+                this.returnUserAchievements(userId).then((results) => {
+                    userAchievements = results;
+                })
+            )
+
+            promises.push(
+                this.returnUserMedals(userId).then((results) => {
+                    userMedals = results;
+                })
+            )
+
+            promises.push(
+                this.returnUserOccupations(userId).then((results) => {
+                    userOccupations = results;
+                })
+            )
+
+            Promise.all(promises).then(() => {
+                functions.executeSql(
+                    `
+                        SELECT
+                            id_usuario,
+                            email,
+                            nome,
+                            profile_photo,
+                            user_level,
+                            level_progress,
+                            user_cover_image,
+                            user_bio
+                        FROM
+                            usuarios
+                        WHERE
+                            id_usuario = ?
+                    `, [userId]
+                ).then((results) => {
+                    let user = {
+                        id_usuario: results[0].id_usuario,
+                        email: results[0].email,
+                        nome: results[0].nome,
+                        profile_photo: results[0].profile_photo,
+                        user_level: results[0].user_level,
+                        level_progress: results[0].level_progress,
+                        user_cover_image: results[0].user_cover_image,
+                        user_bio: results[0].user_bio,
+                        user_achievements: userAchievements,
+                        user_medals: userMedals,
+                        user_occupations: userOccupations
+                    }
+                    resolve(user);
+                }).catch((error) => {
+                    reject(error);
+                })
+            })
+        })
+    },
+    returnGroupUsers: function (group_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        id_usuario
+                    FROM
+                        usuarios u
+                    LEFT JOIN
+                        group_members gm ON gm.user_id = u.id_usuario
+                    WHERE
+                        gm.group_id = ?
+                `, [group_id]
+            ).then((results) => {
+                let promises = [];
+                let users = [];
+
+                for (let i = 0; i < results.length; i++) {
+                    let currentUserId = results[i].id_usuario;
+
+                    promises.push(
+                        this.returnSingleUser(currentUserId).then((results2) => {
+                            users.push(results2);
+                        })
+                    )
+                } 
+
+                Promise.all(promises).then(() => {
+                    resolve(users);
+                })                
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnGroupPendingUsers: function (groupId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        pending_user_email
+                    FROM
+                        group_pending_users
+                    WHERE
+                        group_pending_users.group_id = ?
+                `, [groupId]
+            ).then((results) => {
+                resolve(results);
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnUserGroups: function (userId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        *
+                    FROM
+                        os_groups
+                    LEFT JOIN
+                        user_groups ug ON ug.group_id = os_groups.groups_id
+                    WHERE
+                        ug.user_id = ?
+                `, [userId]
+            ).then((results) => {
+                let groups = results;
+                let promises = [];
+
+                for (let i = 0; i < groups.length; i++) {
+                    let currentGroup = groups[i];
+
+                    promises.push(
+                        this.returnGroupUsers(currentGroup.groups_id).then((results2) => {
+                            currentGroup['group_members'] = results2;
+                        })
+                    )
+
+                    promises.push(
+                        this.returnGroupPendingUsers(currentGroup.groups_id).then((results2) => {
+                            currentGroup['pending_users'] = results2;
+                        })
+                    )
+                }
+
+                Promise.all(promises).then(() => {
+                    resolve(groups);
+                })
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnUserMedals: function (userId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        *
+                    FROM
+                        medals m
+                    LEFT JOIN
+                        user_medals um ON um.medal_id = m.id
+                    WHERE
+                        um.user_id = ?
+                `, [userId]
+            ).then((results) => {
+                resolve(results);
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnUserAchievements: function (userId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        *
+                    FROM
+                        achievements a
+                    LEFT JOIN
+                        user_achievements ua ON ua.achievement_id = a.id
+                    WHERE
+                        ua.user_id = ?
+                `, [userId]
+            ).then((results) => {
+                resolve(results);
             }).catch((error) => {
                 reject(error);
             })
@@ -122,190 +327,26 @@ let userService = {
     },
     returnUser: function (userId) {
         return new Promise((resolve, reject) => {
-            functions.executeSql(
-                `
-                    SELECT
-                        *
-                    FROM
-                        usuarios
-                    WHERE
-                        id_usuario = ?
-                `, [userId]
-            ).then((results) => {
-                if (results.length > 0) {
-                    let user_groups = results[0].user_groups.split(",");
-                    let user_groups_object = [];
-                    let user_groups_id = "";
-                    let promises = [];
-                    for (let i in user_groups) {
-                        promises.push(
-                            functions.executeSql(
-                                `
-                                    SELECT
-                                        *
-                                    FROM
-                                        os_groups
-                                    WHERE
-                                        groups_id = ?
-                                `, [user_groups[i]]
-                            ).then((results2) => {
-                                if (results2[0] != undefined) {
-                                    let group_members_object = [], pending_users = results2[0].pending_users, pending_members_array = [];
-                                    if (pending_users.indexOf(",")) { //Se entrar aqui significa que existe mais de um email na lista de usuarios pendentes
-                                        pending_members_array = pending_users.split(",");
-                                    } else {
-                                        pending_members_array.push(results2[0].pending_users);
-                                    }
-                                    let resultsGroupMembers = results2[0].group_members.split(",");
-                                    let promises2 = [];
-                                    for (let j in resultsGroupMembers) {
-                                        promises2.push(
-                                            functions.executeSql(
-                                                `
-                                                    SELECT
-                                                        *
-                                                    FROM
-                                                        usuarios
-                                                    WHERE
-                                                        id_usuario = ?
-                                                `, [resultsGroupMembers[j]]
-                                            ).then((results3) => {
-                                                group_members_object[j] = {
-                                                    nome: results3[0].nome,
-                                                    email: results3[0].email,
-                                                    id_usuario: results3[0].id_usuario,
-                                                    profile_photo: results3[0].profile_photo,
-                                                    user_groups: results3[0].user_groups
-                                                }
-                                            }).catch((error3) => {
-                                                reject(error3);
-                                            })
-                                        )
-                                    }
+            let userGroups;
+            let singleUser;
 
-                                    Promise.all(promises2).then(() => {
-                                        user_groups_object[i] = {
-                                            groups_id: results2[0].groups_id,
-                                            group_name: results2[0].group_name,
-                                            group_members: group_members_object,
-                                            group_owner: results2[0].group_owner,
-                                            pending_users: pending_members_array,
-                                            image: results2[0].image,
-                                            group_description: results2[0].group_description
-                                        }
+            let promises = [];
 
-                                        if (i == 0) {
-                                            user_groups_id = results2[0].groups_id;
-                                        } else {
-                                            user_groups_id += "," + results2[0].groups_id;
-                                        }
-                                    }).catch((error2) => {
-                                        reject(error2);
-                                    })
-                                }
-                            }).catch((error2) => {
-                                reject(error2);
-                            })
-                        )
-                    }
-
-                    Promise.all(promises).then(() => {
-                        let user_medals = results[0].user_medals;
-                        let user_achievements = results[0].user_achievements;
-                        let user_achievements_object = [];
-                        let user_medals_object = [];
-                        
-                        if (user_medals.indexOf(",") != -1) {
-                            user_medals = user_medals.split(",");
-                        } 
-
-                        if (user_achievements.indexOf(",") != -1) {
-                            user_achievements = user_achievements.split(",");
-                        } 
-
-                        let promises3 = [];
-
-                        if (user_achievements != "") {
-                            for (let i = 0; i < user_achievements.length; i++) {
-                                promises3.push(
-                                    functions.executeSql(
-                                        `
-                                            SELECT
-                                                *
-                                            FROM
-                                                achievements
-                                            WHERE
-                                                id = ?
-                                        `, [user_achievements[i]]
-                                    ).then((results4) => {
-                                        let achievements = {
-                                            id: results4[0].id,
-                                            achievements_name: results4[0].achievements_name,
-                                            achievements_description: results4[0].achievements_description
-                                        }
-                                        user_achievements_object.push(achievements);
-                                    }).catch((error4) => {
-                                        reject(error4);
-                                    })
-                                )
-                            }
-                        }
-
-                        if (user_medals != "") {
-                            for (let i = 0; i < user_medals.length; i++) {
-                                promises3.push(
-                                    functions.executeSql(
-                                        `
-                                            SELECT
-                                                *
-                                            FROM
-                                                medals
-                                            WHERE
-                                                id = ?
-                                        `, [user_medals[i]]
-                                    ).then((results5) => {
-                                        let medal = {
-                                            id: results[0].id,
-                                            medal_name: results[0].medal_name,
-                                            medal_description: results[0].medal_description
-                                        }
-
-                                        user_medals_object.push(medal);
-                                    }).catch((error5) => {
-                                        reject(error5);
-                                    })
-                                )
-                            }
-                        }
-
-                        Promise.all(promises3).then(() => {
-                            let user = {
-                                id_usuario: userId,
-                                email: results[0].email,
-                                nome: results[0].nome,
-                                profile_photo: results[0].profile_photo,
-                                user_groups: user_groups_object,
-                                user_groups_id: user_groups_id,
-                                user_medals: user_medals_object,
-                                user_achievements: user_achievements_object,
-                                user_level: results[0].user_level,
-                                level_progress: results[0].level_progress,
-                                user_cover_image: results[0].user_cover_image,
-                                user_occupation: results[0].user_occupation,
-                                user_bio: results[0].user_bio
-                            }
-                            resolve(user);
-                        }).catch((error2) => {
-                            reject(error2);
-                        })
-                    }).catch((error2) => {
-                        reject(error2);
-                    })
-                } else {
-                    reject("Nenhum usuário com esse ID");
-                }
+            promises.push(this.returnUserGroups(userId).then((results) => {
+                userGroups = results;
             }).catch((error) => {
                 reject(error);
+            }))
+
+            promises.push(
+                this.returnSingleUser(userId).then((results) => {
+                    singleUser = results;
+                })
+            )
+
+            Promise.all(promises).then(() => {
+                singleUser["user_groups"] = userGroups;
+                resolve(singleUser);
             })
         })
     }

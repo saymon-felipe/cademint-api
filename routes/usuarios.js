@@ -317,48 +317,24 @@ router.patch("/exclude_occupation", login, (req, res, next) => {
 });
 
 router.patch("/add_occupation", login, (req, res, next) => {
-    mysql.getConnection((error, conn) => {
-        if (error) { return res.status(500).send(error) };
+    if (req.body.user_occupation.length > 15 || req.body.user_occupation == "" || req.body.user_occupation < 3) {
+        return res.status(401).send({ error: "Cargo inválido!" });
+    }
 
-        conn.query('select user_occupation from usuarios where id_usuario = ?',
-        [req.usuario.id_usuario], 
-            (err, results) => {
-                if (err) { return res.status(500).send({ error: err }) };
-                if (req.body.user_occupation.length > 15 || req.body.user_occupation == "" || req.body.user_occupation < 3) {
-                    return res.status(401).send({ error: "Cargo inválido!" });
-                }
-                let user_occupations = results[0].user_occupation;
-                let new_user_occupations;
-                if (user_occupations == "") {
-                    new_user_occupations = req.body.user_occupation;
-                } else {
-                    if (user_occupations.indexOf(",") != -1) {
-                        if ((user_occupations.match(/,/g) || []).length >= 4) {
-                            return res.status(401).send({ error: "Não é possível adicionar mais cargos à esse usuário!" });
-                        }
-                        new_user_occupations = user_occupations.split(",");
-                        new_user_occupations.push(req.body.user_occupation);
-                        new_user_occupations = new_user_occupations.join(",");
-                    } else {
-                        new_user_occupations = user_occupations + "," + req.body.user_occupation;
-                    }
-                }
-                
-                conn.query('update usuarios set user_occupation = ? where id_usuario = ?',
-                [new_user_occupations, req.usuario.id_usuario],
-                    (err2, results2) => {
-                        if (err2) { return res.status(500).send({ error: err2 }) };
-                        
-                        conn.release();
-                        const response = {
-                            user_occupations: new_user_occupations,
-                            message: "Cargo adicionado com sucesso!"
-                        }
-                        return res.status(200).send(response);
-                    });
+    _userService.addOccupation(req.usuario.id_usuario, req.body.user_occupation).then((results) => {
+        let response = {
+            message: "Cargo adicionado com sucesso",
+            returnObj: {},
+            request: {
+                type: "PATCH",
+                status: 200
             }
-        )
-    });
+        }
+
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
 });
 
 router.get("/return_user_by_jwt", login, (req, res, next) => {
