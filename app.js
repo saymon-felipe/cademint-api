@@ -4,12 +4,21 @@ const app = express();
 const morgan = require('morgan');
 const bodyParser = require("body-parser");
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 
 const rotaOs = require('./routes/os');
 const rotaUsuarios = require('./routes/usuarios');
 const rotaSystem = require('./routes/system');
 const rotaProjetos = require('./routes/projects');
 const rotaSite = require('./routes/site');
+
+const limiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minuto
+    max: 10, // Limite de 10 solicitações por minuto por IP
+});
+
+// Use o middleware de limite de taxa de solicitações
+app.use(limiter);
 
 app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -52,7 +61,5 @@ app.use((error, req, res, next) => {
        mensagem: error.message
     });
 });
-
-
 
 module.exports = app;

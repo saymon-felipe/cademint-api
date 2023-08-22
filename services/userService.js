@@ -359,7 +359,9 @@ let userService = {
                     } else {
                         userId = results[0].id_usuario;
                     }
-                }))
+                })).catch((error) => {
+                    reject(error);
+                })
             } else {
                 userIdPromisse.push(
                     new Promise((resolve2) => {
