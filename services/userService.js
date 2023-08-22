@@ -130,8 +130,8 @@ let userService = {
     returnSingleUser: function (userId) {
         return new Promise((resolve, reject) => {
             let userAchievements;
-            let userMedals;
-            let userOccupations;
+            let userMedals = [];
+            let userOccupations = [];
 
             let promises = [];
 
@@ -325,28 +325,56 @@ let userService = {
             })
         })
     },
-    returnUser: function (userId) {
+    returnUser: function (userId, userEmail = "") {
         return new Promise((resolve, reject) => {
             let userGroups;
             let singleUser;
 
             let promises = [];
+            let userIdPromisse = [];
 
-            promises.push(this.returnUserGroups(userId).then((results) => {
-                userGroups = results;
-            }).catch((error) => {
-                reject(error);
-            }))
+            if (userEmail != "") {
+                userIdPromisse.push(functions.executeSql(
+                    `
+                        SELECT
+                            id_usuario
+                        FROM
+                            usuarios
+                        WHERE 
+                            email = ?
+                    `, [userEmail]
+                ).then((results) => {
+                    if (results.length == 0) {
+                        resolve("Usuário não cadastrado");
+                    } else {
+                        userId = results[0].id_usuario;
+                    }
+                }))
+            } else {
+                userIdPromisse.push(
+                    new Promise((resolve2) => {
+                        resolve2();
+                    })
+                )
+            }
 
-            promises.push(
-                this.returnSingleUser(userId).then((results) => {
-                    singleUser = results;
+            Promise.all(userIdPromisse).then(() => {
+                promises.push(this.returnUserGroups(userId).then((results) => {
+                    userGroups = results;
+                }).catch((error) => {
+                    reject(error);
+                }))
+    
+                promises.push(
+                    this.returnSingleUser(userId).then((results) => {
+                        singleUser = results;
+                    })
+                )
+    
+                Promise.all(promises).then(() => {
+                    singleUser["user_groups"] = userGroups;
+                    resolve(singleUser);
                 })
-            )
-
-            Promise.all(promises).then(() => {
-                singleUser["user_groups"] = userGroups;
-                resolve(singleUser);
             })
         })
     }

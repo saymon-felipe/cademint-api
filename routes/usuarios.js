@@ -140,43 +140,32 @@ router.get("/return_user", login, (req, res, next) => {
 });
 
 router.post("/return_user_by_email", (req, res, next) => {
+    let response = {
+        message: "Retorno de usuário",
+        returnObj: {},
+        request: {
+            type: "POST",
+            status: 200
+        }
+    }
+
     if (req.body.email == "") {
-        return res.status(404).send({ error: "Erro na busca de usuário, email vazio!" });
+        response.message = "Erro na busca de usuário, email vazio!";
+        response.request.status = 404;
+        return res.status(404).send(response);
     } else {
-        mysql.getConnection((error, conn) => {
-            if (error) { return res.status(500).send(error) }
-            conn.query('select * from usuarios where email = ?',
-            [req.body.email], 
-                (error, results) => {
-                    conn.release();
-                    if (error) { return res.status(500).send(error) };
-                    if (results.length == 0) {
-                        const response = {
-                            mensagem: "Usuário não cadastrado, prossiga para o cadastro!",
-                            usuario: []
-                        }
-                        return res.status(404).send({ response });
-                    } else {
-                        let user_groups_array;
-                        if (results[0].user_groups.indexOf(",") != -1) {
-                            user_groups_array = results[0].user_groups.split(",");
-                        } else {
-                            user_groups_array = results[0].user_groups;
-                        }
-                        const response = {
-                            mensagem: "Usuário cadastrado",
-                            usuario: {
-                                nome: results[0].nome,
-                                user_groups: user_groups_array,
-                                email: results[0].email,
-                                id_usuario: results[0].id_usuario
-                            }
-                        }
-                        return res.status(202).send({ response });
-                    }
-                }
-            )
-        });
+        _userService.returnUser(null, req.body.email).then((results) => {
+            if (results == "Email não cadastrado") {
+                response.message = error;
+                response.request.status = 404;
+                return res.status(404).send(response);
+            } else {
+                response.returnObj = results;
+                return res.status(200).send(response);
+            }
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
     }
 });
 
