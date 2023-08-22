@@ -14,7 +14,7 @@ const rotaSite = require('./routes/site');
 
 const limiter = rateLimit({
     windowMs: 60 * 1000, // 1 minuto
-    max: 10, // Limite de 10 solicitações por minuto por IP
+    max: 8, // Limite de 10 solicitações por minuto por IP
 });
 
 // Use o middleware de limite de taxa de solicitações
