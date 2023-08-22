@@ -138,18 +138,24 @@ let userService = {
             promises.push(
                 this.returnUserAchievements(userId).then((results) => {
                     userAchievements = results;
+                }).catch((error) => {
+                    reject(error);
                 })
             )
 
             promises.push(
                 this.returnUserMedals(userId).then((results) => {
                     userMedals = results;
+                }).catch((error) => {
+                    reject(error);
                 })
             )
 
             promises.push(
                 this.returnUserOccupations(userId).then((results) => {
                     userOccupations = results;
+                }).catch((error) => {
+                    reject(error);
                 })
             )
 
@@ -267,12 +273,16 @@ let userService = {
                     promises.push(
                         this.returnGroupUsers(currentGroup.groups_id).then((results2) => {
                             currentGroup['group_members'] = results2;
+                        }).catch((error) => {
+                            reject(error);
                         })
                     )
 
                     promises.push(
                         this.returnGroupPendingUsers(currentGroup.groups_id).then((results2) => {
                             currentGroup['pending_users'] = results2;
+                        }).catch((error) => {
+                            reject(error);
                         })
                     )
                 }
@@ -368,6 +378,8 @@ let userService = {
                 promises.push(
                     this.returnSingleUser(userId).then((results) => {
                         singleUser = results;
+                    }).catch((error) => {
+                        reject(error);
                     })
                 )
     
