@@ -154,7 +154,7 @@ router.post("/return_user_by_email", (req, res, next) => {
         response.request.status = 404;
         return res.status(404).send(response);
     } else {
-        _userService.returnUser(null, req.body.email).then((results) => {
+        _userService.returnUserByEmail(req.body.email).then((results) => {
             if (results == "Email não cadastrado") {
                 response.message = error;
                 response.request.status = 404;

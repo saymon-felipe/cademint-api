@@ -335,60 +335,56 @@ let userService = {
             })
         })
     },
-    returnUser: function (userId, userEmail = "") {
+    returnUserByEmail: function (userEmail) {
+        return new Promise((resolve, reject) => {
+            let self = this;
+
+            functions.executeSql(
+                `
+                    SELECT
+                        id_usuario
+                    FROM
+                        usuarios
+                    WHERE 
+                        email = ?
+                `, [userEmail]
+            ).then((results) => {
+                let userId;
+                let user;
+                
+                if (results.length == 0) {
+                    resolve("Usuário não cadastrado");
+                } else {
+                    userId = results[0].id_usuario;
+                    self.returnUser(userId).then((results2) => {
+                        user = results2;
+                    }).catch((error2) => {
+                        reject(error2);
+                    })
+                }
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnUser: function (userId) {
         return new Promise((resolve, reject) => {
             let userGroups;
             let singleUser;
+            let self = this;
 
-            let promises = [];
-            let userIdPromisse = [];
+            self.returnUserGroups(userId).then((results) => {
+                userGroups = results;
 
-            if (userEmail != "") {
-                userIdPromisse.push(functions.executeSql(
-                    `
-                        SELECT
-                            id_usuario
-                        FROM
-                            usuarios
-                        WHERE 
-                            email = ?
-                    `, [userEmail]
-                ).then((results) => {
-                    if (results.length == 0) {
-                        resolve("Usuário não cadastrado");
-                    } else {
-                        userId = results[0].id_usuario;
-                    }
-                })).catch((error) => {
-                    reject(error);
-                })
-            } else {
-                userIdPromisse.push(
-                    new Promise((resolve2) => {
-                        resolve2();
-                    })
-                )
-            }
-
-            Promise.all(userIdPromisse).then(() => {
-                promises.push(this.returnUserGroups(userId).then((results) => {
-                    userGroups = results;
-                }).catch((error) => {
-                    reject(error);
-                }))
-    
-                promises.push(
-                    this.returnSingleUser(userId).then((results) => {
-                        singleUser = results;
-                    }).catch((error) => {
-                        reject(error);
-                    })
-                )
-    
-                Promise.all(promises).then(() => {
+                self.returnSingleUser(userId).then((results) => {
+                    singleUser = results;
                     singleUser["user_groups"] = userGroups;
                     resolve(singleUser);
+                }).catch((error) => {
+                    reject(error);
                 })
+            }).catch((error) => {
+                reject(error);
             })
         })
     }
