@@ -588,7 +588,6 @@ let taskService = {
                 `, [token, group_id, email_requested]
             ).then((results) => {
                 if (results.length > 0) {
-
                     functions.executeSql(
                         `
                             SELECT

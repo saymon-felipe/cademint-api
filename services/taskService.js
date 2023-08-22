@@ -27,7 +27,7 @@ let taskService = {
         return new Promise((resolve, reject) => {
             functions.executeSql(`
                 SELECT 
-                    os_ambient.id_raw,
+                    os_ambient.id,
                     os_ambient.desc_os,
                     os_ambient.status_os,
                     os_ambient.priority,
@@ -55,7 +55,7 @@ let taskService = {
                 let tasksObj = {
                     os_list: results2.map(os => {
                         return {
-                            id: os.id_raw,
+                            id: os.id,
                             desc_os: os.desc_os,
                             status_os: os.status_os,
                             priority: os.priority,
@@ -84,12 +84,12 @@ let taskService = {
                 FROM
                     os_ambient
                 WHERE 
-                    id_raw = ?
+                    id = ?
             `, [taskId])
             .then((results) => {
                 let task = results.map(task => {
                     return {
-                        id: task.id_raw,
+                        id: task.id,
                         desc_os: task.desc_os,
                         status_os: task.status_os,
                         priority: task.priority,
@@ -283,7 +283,7 @@ let taskService = {
                 SET
                     desc_os = ?, status_os = ?, priority = ?, sponsor = ?, user_owner = ?, size = ?
                 WHERE
-                    id_raw = ?
+                    id = ?
             `, [
                 task.desc_os,
                 task.status_os,
@@ -318,7 +318,7 @@ let taskService = {
                 FROM
                     os_ambient
                 WHERE
-                    id_raw = ?
+                    id = ?
                 AND
                     group_id = ?
             `, [taskId, groupId])
@@ -342,7 +342,7 @@ let taskService = {
                 SET
                     status_os = ?
                 WHERE
-                    id_raw = ?
+                    id = ?
             `, [status, taskId])
             .then((results) => {
                 resolve();
@@ -358,7 +358,7 @@ let taskService = {
                 DELETE FROM
                     os_ambient
                 WHERE
-                    id_raw = ?
+                    id = ?
             `, [taskId])
             .then(() => {
                 resolve();
