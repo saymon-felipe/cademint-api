@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const bodyParser = require("body-parser");
 const cors = require('cors');
 
-const rotaOs = require('./routes/os');
+const rotaTarefas = require('./routes/tasks');
 const rotaUsuarios = require('./routes/usuarios');
 const rotaSystem = require('./routes/system');
 const rotaProjetos = require('./routes/projects');
@@ -33,7 +33,7 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/os', rotaOs);
+app.use('/task', rotaTarefas);
 app.use('/usuarios', rotaUsuarios);
 app.use('/system', rotaSystem);
 app.use('/projects', rotaProjetos);

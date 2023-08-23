@@ -27,8 +27,7 @@ router.get("/", (req, res, next) => {
 });
 
 router.post("/", (req, res, next) => {
-    let group_members = "1,2," + req.body.id_usuario;
-    _projectsService.createGroup(req.body.group_name, group_members, req.body.id_usuario, req.body.pending_users).then((results) => {
+    _projectsService.createGroup(req.body.group_name, req.body.id_usuario).then((results) => {
         let response = {
             message: "Grupo criado com sucesso",
             returnObj: results,
@@ -37,7 +36,23 @@ router.post("/", (req, res, next) => {
                 status: 200
             }
         }
-        return res.status(200).send(response);
+
+        let promises = [];
+
+        if (req.body.pending_users != "") {
+            const token = crypto.randomBytes(20).toString('hex');
+            promises.push(
+                _projectsService.requestUserToGroup(token, results.group_id, req.body.pending_users, req.body.group_name).then().catch((error) => {
+                    return res.status(500).send(error);
+                }) 
+            )
+
+            Promise.all(promises).then(() => {
+                return res.status(200).send(response);
+            })
+        } else {
+            return res.status(200).send(response);
+        }
     }).catch((error) => {
         return res.status(500).send(error);
     })
@@ -165,42 +180,6 @@ router.post("/remove_invitation", login, (req, res, next) => {
     })
     
     _projectsService.removeGroupPendingUser(req.body.group_id, req.body.email).then((results) => {
-        if (!results) {
-            response.message = "Convite não encontrado";
-            return res.status(200).send(response);
-        }
-        return res.status(200).send(response);
-    }).catch((error) => {
-        console.log(error)
-        return res.status(500).send(error);
-    })
-});
-
-router.post("/return_group_by_name", (req, res, next) => {
-    let response = {
-        message: "Retorno do grupo '" + req.body.group_name + "'",
-        returnObj: {},
-        request: {
-            type: "POST",
-            status: 200
-        }
-    }
-
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch((error) => {
-        response.message = error || "Permissão negada";
-        response.request.status = 401;
-        return res.status(401).send(response);
-    })
-    
-    _projectsService.returnGroup("", req.body.group_name).then((results) => {
-        let response = {
-            message: "Retorno do grupo " + req.body.group_name,
-            returnObj: results,
-            request: {
-                type: "POST",
-                status: 200
-            }
-        }
         return res.status(200).send(response);
     }).catch((error) => {
         return res.status(500).send(error);
@@ -208,8 +187,6 @@ router.post("/return_group_by_name", (req, res, next) => {
 });
 
 router.post("/request_user_to_group", login, (req, res, next) => {
-    const token = crypto.randomBytes(20).toString('hex');
-
     let response = {
         message: "Email de solicitação enviado",
         returnObj: {},
@@ -218,6 +195,8 @@ router.post("/request_user_to_group", login, (req, res, next) => {
             status: 200
         }
     }
+
+    const token = crypto.randomBytes(20).toString('hex');
 
     _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch((error) => {
         response.message = error || "Permissão negada";
@@ -246,11 +225,12 @@ router.post("/exclude_user", login, (req, res, next) => {
 
     let group_id = req.body.group_id;
     let user_id = req.body.user_id == null ? req.usuario.id_usuario : req.body.user_id;
+
     _projectsService.excludeUser(group_id, user_id).then((results) => {
         response.message = results;
+
         return res.status(200).send(response);
     }).catch((error) => {
-        console.log(error)
         return res.status(500).send(error);
     })
 });
@@ -289,7 +269,6 @@ router.post('/delete_group', login, (req, res, next) => {
     }
 
     _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.groups_id).then().catch((error) => {
-        console.log(error);
         response.message = error || "Permissão negada";
         response.request.status = 401;
         return res.status(401).send(response);

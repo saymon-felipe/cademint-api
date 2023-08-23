@@ -1,12 +1,13 @@
-const mysql = require("../mysql").pool;
+const functions = require("../utils/functions");
 
 let userId;
 let user_level;
 let level_progress;
 
 function calculateUserLevelProgress(current_level, current_level_progress, progress_add) {
-    let newProgress;
+    let newProgress = 0;
     let newLevel = user_level;
+    
     if (current_level > 0 && current_level <= 9) {
         newProgress = new Number(parseFloat(current_level_progress) + parseFloat(progress_add) + (parseFloat(progress_add) * (250 / 100))).toFixed(4);
     }
@@ -37,39 +38,51 @@ function calculateUserLevelProgress(current_level, current_level_progress, progr
 }
 
 let userLevel = {
-    setUser: async function (user_id) {
-        userId = user_id;
-        mysql.getConnection((error, conn) => {
-            if (error) { console.log(error) };
-            conn.query('select level_progress, user_level from usuarios where id_usuario = ?',
-            [user_id],
-                (err, results) => {
-                    if (err) { console.log(err) };
-                    conn.release();
-                    user_level = results[0].user_level;
-                    level_progress = results[0].level_progress;
-                }
-            )
+    setUser: function (user_id) {
+        return new Promise((resolve, reject) => {
+            userId = user_id;
+
+            functions.executeSql(
+                `
+                    SELECT
+                        level_progress,
+                        user_level
+                    FROM
+                        usuarios
+                    WHERE
+                        id_usuario = ?
+                `, [user_id]
+            ).then((results) => {
+                user_level = results[0].user_level,
+                level_progress = results[0].level_progress
+
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            })
         })
+        
     },
     add: function (number_received) {
-        let level = calculateUserLevelProgress(user_level, level_progress, number_received);
-        mysql.getConnection((error, conn) => {
-            if (error) { console.log(error) };
-            conn.query('update usuarios set user_level = ? where id_usuario = ?',
-            [level.new_level, userId],
-                (err, results) => {
-                    if (err) { console.log(err) };
-                    conn.query('update usuarios set level_progress = ? where id_usuario = ?',
-                    [level.new_progress, userId],
-                        (err2, results2) => {
-                            if (err2) { console.log(err2) };
-                            conn.release();
-                        }
-                    )
-                }
-            )
+        return new Promise((resolve, reject) => {
+            let level = calculateUserLevelProgress(user_level, level_progress, number_received);
+
+            functions.executeSql(
+                `
+                    UPDATE
+                        usuarios
+                    SET
+                        user_level = ?, level_progress = ?
+                    WHERE
+                        id_usuario = ?
+                `, [level.new_level, level.new_progress, userId]
+            ).then((results) => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            })
         })
+        
     }
 }
 

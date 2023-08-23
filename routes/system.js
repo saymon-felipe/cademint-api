@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Versão do sistema
-const system_version = "v " + "1.2.24";
+const system_version = "v " + "1.3.0";
 // Nome da plataforma
 const system_name = "Cademint";
 // Criador da plataforma

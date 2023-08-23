@@ -5,17 +5,17 @@ let taskService = {
         return new Promise((resolve, reject) => {
             functions.executeSql(`
                 SELECT
-                    user_groups
+                    *
                 FROM
-                    usuarios
+                    group_members
                 WHERE
-                    id_usuario = ?
-            `, [userId])
+                    user_id = ? AND group_id = ?
+            `, [userId, groupId])
             .then((results) => {
-                if (results[0].user_groups.indexOf(groupId) == -1) {
-                    resolve(false);
-                } else {
+                if (results.length > 0) {
                     resolve(true);
+                } else {
+                    resolve(false);
                 }
             })
             .catch((error) => {
