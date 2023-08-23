@@ -53,8 +53,10 @@ let userLevel = {
                         id_usuario = ?
                 `, [user_id]
             ).then((results) => {
-                user_level = results[0].user_level,
-                level_progress = results[0].level_progress
+                if (results[0] != undefined) {
+                    user_level = results[0].user_level,
+                    level_progress = results[0].level_progress
+                }
 
                 resolve();
             }).catch((error) => {
