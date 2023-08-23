@@ -42,10 +42,10 @@ let taskService = {
                 `
                     INSERT INTO
                         os_groups
-                        (group_name, group_owner, image, group_members)
+                        (group_name, group_owner, image)
                     VALUES
-                        (?, ?, ?, ?)
-                `, [group_name, id_usuario, process.env.URL_API + '/public/cademint-group.png', ""]
+                        (?, ?, ?)
+                `, [group_name, id_usuario, process.env.URL_API + '/public/cademint-group.png']
             ).then((results) => {
                 let group = {
                     group_id: results.insertId,
