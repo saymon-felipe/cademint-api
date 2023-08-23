@@ -352,6 +352,23 @@ let userService = {
             })
         })
     },
+    insertUserAchievement: function (userId, achievementId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    INSERT INTO
+                        user_achievements
+                        (user_id, achievement_id)
+                    VALUES
+                        (?, ?)
+                `, [userId, achievementId]
+            ).then((results) => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
     returnUserAchievements: function (userId) {
         return new Promise((resolve, reject) => {
             functions.executeSql(
@@ -427,7 +444,9 @@ let userService = {
         })
     },
     registerUser: function (userName, userEmail, userPassword) {
-        return new Promise((resolve, reject) => {            
+        return new Promise((resolve, reject) => {     
+            let self = this;
+
             functions.executeSql(
                 `
                     SELECT
@@ -468,6 +487,7 @@ let userService = {
 
                             let groupName = "Projeto de " + userName;
                             _projectsService.createGroup(groupName, results2.insertId).then(() => {
+                                self.insertUserAchievement(results2.insertId, 1);
                                 resolve(createdUser);
                             }).catch((error3) => {
                                 reject(error3);
