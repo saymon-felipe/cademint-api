@@ -59,72 +59,74 @@ router.post("/", (req, res, next) => {
 });
 
 router.patch("/edit_group", login, (req, res, next) => {
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch(() => {
-        return res.status(401).send({ error: "Você não é administrador desse grupo" });
-    })
-
-    let newGroupInformations = {
-        group_id: req.body.group_id,
-        group_name: req.body.group_name,
-        group_description: req.body.group_description
-    }
-
-    _projectsService.editGroupInformations(newGroupInformations).then((results) => {
-        let response = {
-            message: "Grupo alterado com sucesso",
-            returnObj: {},
-            request: {
-                type: "PATCH",
-                status: 200
-            }
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then(() => {
+        let newGroupInformations = {
+            group_id: req.body.group_id,
+            group_name: req.body.group_name,
+            group_description: req.body.group_description
         }
-        return res.status(200).send(response);
-    }).catch((error) => {
-        return res.status(500).send(error);
+    
+        _projectsService.editGroupInformations(newGroupInformations).then((results) => {
+            let response = {
+                message: "Grupo alterado com sucesso",
+                returnObj: {},
+                request: {
+                    type: "PATCH",
+                    status: 200
+                }
+            }
+            return res.status(200).send(response);
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch(() => {
+        return res.status(401).send({ error: "Você não é administrador desse grupo" });
     })
 })
 
 router.patch("/group_image/:group_id", login, uploadConfig.upload.single('user_imagem'), (req, res, next) => {
     if (req.file == undefined) {
-        return res.status(500).send({ error: "Tipo de arquivo não suportado" });
+        return res.status(500).send("Tipo de arquivo não suportado");
     }
 
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.params.group_id).then().catch(() => {
-        return res.status(401).send({ error: "Você não é administrador desse grupo" });
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.params.group_id).then(() => {
+        _projectsService.changeGroupImage(req.file.transforms[0].location, req.params.group_id).then((results) => {
+            let response = {
+                message: "Imagem do grupo alterada com sucesso",
+                returnObj: {},
+                request: {
+                    type: "PATCH",
+                    status: 200
+                }
+            }
+            return res.status(200).send(response);
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch(() => {
+        return res.status(401).send("Você não é administrador desse grupo");
     })
 
-    _projectsService.changeGroupImage(req.file.transforms[0].location, req.params.group_id).then((results) => {
-        let response = {
-            message: "Imagem do grupo alterada com sucesso",
-            returnObj: {},
-            request: {
-                type: "PATCH",
-                status: 200
-            }
-        }
-        return res.status(200).send(response);
-    }).catch((error) => {
-        return res.status(500).send(error);
-    })
+    
 });
 
 router.patch("/exclude_group_image", login, (req, res, next) => {
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch(() => {
-        return res.status(401).send({ error: "Você não é administrador desse grupo" });
-    })
-
-    _projectsService.excludeGroupImage(req.body.group_id).then((results) => {
-        let response = {
-            message: "Imagem do grupo excluída com sucesso",
-            returnObj: {},
-            request: {
-                type: "PATCH",
-                status: 200
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then(() => {
+        _projectsService.excludeGroupImage(req.body.group_id).then((results) => {
+            let response = {
+                message: "Imagem do grupo excluída com sucesso",
+                returnObj: {},
+                request: {
+                    type: "PATCH",
+                    status: 200
+                }
             }
-        }
-        return res.status(200).send(response);
-    }).catch((error) => {
-        return res.status(500).send(error);
+            return res.status(200).send(response);
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch(() => {
+        return res.status(401).send({ error: "Você não é administrador desse grupo" });
     })
 });
 
@@ -173,16 +175,16 @@ router.post("/remove_invitation", login, (req, res, next) => {
         }
     }
     
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch((error) => {
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then(() => {
+        _projectsService.removeGroupPendingUser(req.body.group_id, req.body.email).then((results) => {
+            return res.status(200).send(response);
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch((error) => {
         response.message = error || "Permissão negada";
         response.request.status = 401;
         return res.status(401).send(response);
-    })
-    
-    _projectsService.removeGroupPendingUser(req.body.group_id, req.body.email).then((results) => {
-        return res.status(200).send(response);
-    }).catch((error) => {
-        return res.status(500).send(error);
     })
 });
 
@@ -198,19 +200,19 @@ router.post("/request_user_to_group", login, (req, res, next) => {
 
     const token = crypto.randomBytes(20).toString('hex');
 
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then().catch((error) => {
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.group_id).then(() => {
+        _projectsService.requestUserToGroup(token, req.body.group_id, req.body.user_email, req.body.group_name).then((results) => {
+            response.message = results;
+            return res.status(200).send(response);
+        }).catch((error) => {
+            console.log(error)
+            return res.status(500).send(error);
+        }) 
+    }).catch((error) => {
         response.message = error || "Permissão negada";
         response.request.status = 401;
         return res.status(401).send(response);
     })
-
-    _projectsService.requestUserToGroup(token, req.body.group_id, req.body.user_email, req.body.group_name).then((results) => {
-        response.message = results;
-        return res.status(200).send(response);
-    }).catch((error) => {
-        console.log(error)
-        return res.status(500).send(error);
-    }) 
 });
 
 router.post("/exclude_user", login, (req, res, next) => {
@@ -268,18 +270,18 @@ router.post('/delete_group', login, (req, res, next) => {
         }
     }
 
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.groups_id).then().catch((error) => {
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.groups_id).then(() => {
+        _projectsService.excludeGroup(req.body.groups_id).then((results) => {
+            response.message = results;
+            return res.status(200).send(response);
+    
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch((error) => {
         response.message = error || "Permissão negada";
         response.request.status = 401;
         return res.status(401).send(response);
-    })
-
-    _projectsService.excludeGroup(req.body.groups_id).then((results) => {
-        response.message = results;
-        return res.status(200).send(response);
-
-    }).catch((error) => {
-        return res.status(500).send(error);
     })
 });
 

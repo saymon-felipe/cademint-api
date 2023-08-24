@@ -52,7 +52,7 @@ let taskService = {
                     group_name: group_name
                 }
 
-                self.addGroupToMember(id_usuario, results.insertId, false).then(() => {
+                self.addGroupToMember(id_usuario, results.insertId).then(() => {
                     self.addGroupToDefaultMembers(results.insertId).then(() => {
                         resolve(group);
                     }).catch((error3) => {
@@ -68,8 +68,8 @@ let taskService = {
     },
     addGroupToDefaultMembers: function (group_id) {
         return new Promise((resolve, reject) => {
-            this.addGroupToMember(1, group_id, true).then(() => {
-                this.addGroupToMember(2, group_id, true).then(() => {
+            this.addGroupToMember(1, group_id).then(() => {
+                this.addGroupToMember(2, group_id).then(() => {
                     resolve();
                 }).catch((error2) => {
                     reject(error2);
@@ -79,10 +79,8 @@ let taskService = {
             })
         })
     },
-    addGroupToMember: function (user_id, group_id, from_default = false) {
+    addGroupToMember: function (user_id, group_id) {
         return new Promise((resolve, reject) => {
-            let self = this;
-
             functions.executeSql(
                 `
                     INSERT INTO
@@ -92,56 +90,7 @@ let taskService = {
                         (?, ?)
                 `, [group_id, user_id]
             ).then(() => {
-                if (from_default) {
-                    resolve();
-                } else {
-                    functions.executeSql(
-                        `
-                            SELECT
-                                email
-                            FROM
-                                usuarios
-                            WHERE
-                                id_usuario = ?
-                        `, [user_id]
-                    ).then((results2) => {
-                        let userEmail = results2[0].email;
-    
-                        functions.executeSql(
-                            `
-                                SELECT
-                                    *
-                                FROM
-                                    group_pending_users
-                                WHERE
-                                    pending_user_email = ?
-                            `, [userEmail]
-                        ).then((results3) => {
-                            if (results3.length > 0) {
-                                let removeId = results3[0].id;
-    
-                                functions.executeSql(
-                                    `
-                                        DELETE FROM
-                                            group_pending_users
-                                        WHERE
-                                            id = ?
-                                    `, [removeId]
-                                ).then(() => {
-                                    resolve();
-                                }).catch((error4) => {
-                                    reject(error4);
-                                })
-                            } else {
-                                resolve();
-                            }
-                        }).catch((error3) => {
-                            reject(error3);
-                        })
-                    }).catch((error2) => {
-                        reject(error2);
-                    })
-                }
+                resolve();
             }).catch((error) => {
                 reject(error);
             })
@@ -510,8 +459,36 @@ let taskService = {
                             reject("Grupo não encontrado!");
                         }
 
-                        self.addGroupToMember(user_id, group_id, false).then((results3) => {
-                            resolve("Entrou no grupo com sucesso");
+                        functions.executeSql(
+                            `
+                                SELECT
+                                    *
+                                FROM
+                                    group_pending_users
+                                WHERE
+                                    pending_user_email = ?
+                                    AND
+                                    group_id = ?
+                            `, [email_requested, group_id]
+                        ).then((results3) => {
+                            let removeId = results3[0].id;
+
+                            functions.executeSql(
+                                `
+                                    DELETE FROM
+                                        group_pending_users
+                                    WHERE
+                                        id = ?
+                                `, [removeId]
+                            ).then(() => {
+                                self.addGroupToMember(user_id, group_id).then((results4) => {
+                                    resolve("Entrou no grupo com sucesso");
+                                }).catch((error5) => {
+                                    reject(error5);
+                                })
+                            }).catch((error4) => {
+                                reject(error4);
+                            })
                         }).catch((error3) => {
                             reject(error3);
                         })
@@ -584,7 +561,7 @@ let taskService = {
                                 group_owner = ?
                             WHERE
                                 groups_id = ?
-                        `, [results[0], group_id]
+                        `, [results[0].user_id, group_id]
                     ).then((results2) => {
                         resolve();
                     }).catch((error) => {

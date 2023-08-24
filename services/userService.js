@@ -6,6 +6,7 @@ const uploadConfig = require('../config/upload');
 const sendEmails = require("../config/sendEmail");
 const emailTemplates = require("../templates/emailTemplates");
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 let userService = {
     sendResetPasswordEmail: function (token, userEmail) {
