@@ -703,7 +703,7 @@ let userService = {
             })
         })
     },
-    uploadPhoto: function (userId) {
+    uploadPhoto: function (image_url, userId) {
         return new Promise((resolve, reject) => {
             functions.executeSql(
                 `
@@ -713,7 +713,7 @@ let userService = {
                         profile_photo = ?
                     WHERE
                         id_usuario = ?
-                `, [userId]
+                `, [image_url, userId]
             ).then((results) => {
                 resolve();
             }).catch((error) => {
