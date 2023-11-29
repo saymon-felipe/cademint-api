@@ -37,7 +37,7 @@ let uploadConfig = {
                     cb(null, fileName.replace(":", "_").replace(":", "_").replace(" ", "_"));
                 },
                 transform: function (req, file, cb) {
-                    cb(null, sharp().resize(imageWidth).jpeg());
+                    cb(null, sharp().resize(imageWidth));
                 }
             }],
         }),
