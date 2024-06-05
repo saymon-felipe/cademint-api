@@ -25,7 +25,7 @@ let uploadConfig = {
     upload: multer({
         storage: multerS3({
             s3,
-            bucket: 'scrum-cademint-storage',
+            bucket: process.env.BUCKET_NAME,
             acl: 'public-read',
             shouldTransform: function (req, file, cb) {
                 cb(null, /^image/i.test(file.mimetype))
@@ -47,7 +47,7 @@ let uploadConfig = {
         fileFilter: fileFilter
     }),
     deleteFromS3: async function (attachmentId) {
-        return s3.deleteObject({ Bucket: "scrum-cademint-storage", Key: attachmentId }).promise();
+        return s3.deleteObject({ Bucket: process.env.BUCKET_NAME, Key: attachmentId }).promise();
     }
 }
 
