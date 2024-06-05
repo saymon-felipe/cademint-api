@@ -291,4 +291,6 @@ create table versao_db (
     versao varchar(10) not null
 );
 
+INSERT INTO `usuarios` VALUES ('todos.cademint@cademint.com','$2b$10$.avk1NCuIhqZRrWVbCktnebjrGlqk5THlyRMAkVK6Yzk/fmxnLvIC','Todos',1,'https://coretest-cademint-0012d7964dfd.herokuapp.com/public/default-user-image.png','',1,'1.0000','https://coretest-cademint-0012d7964dfd.herokuapp.com/public/default-banner-image.png','','',''),('qualquer.cademint@cademint.com','$2b$10$3rN0rzU2fnyCVedmhG25buYP.nfkjTtBcS7njHqaSyIS0p3AINpnO','Qualquer',2,'https://coretest-cademint-0012d7964dfd.herokuapp.com/public/default-user-image.png','',1,'1.0000','https://coretest-cademint-0012d7964dfd.herokuapp.com/public/default-banner-image.png','','',''),('scrumcademint@gmail.com','$2b$10$h4nWn1fT19yKi0NaNF0rW.SnAGU1wZ7DM8a7ngMQ5.BDnKWpFDhhW','Cademint',3,'https://scrum-cademint-storage.s3.us-west-1.amazonaws.com/2022-03-31T14_22_26.168Zcandidato-ana-2.PNG','',1,'1.0210','https://coretest-cademint-0012d7964dfd.herokuapp.com/public/default-banner-image.png','','','');
+
 insert into versao_db (versao) values ("24.0604.0");
