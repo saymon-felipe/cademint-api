@@ -572,6 +572,69 @@ let taskService = {
                 reject(error);
             })
         })
+    },
+    createSprint: function (project_id, name, period, users) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    INSERT INTO
+                        sprints
+                        (group_id, final_date, name)
+                    VALUES
+                        (?, DATE_ADD(CURRENT_TIMESTAMP(), INTERVAL ? DAY), ?)
+                `, [project_id, period, name]
+            ).then((results) => {
+                if (results.affectedRows == 0) {
+                    reject("Erro ao criar sprint");
+                } else {
+                    let promises = [];
+                    
+                    for (let i = 0; i < users.length; i++) {
+                        let currentUser = users[i];
+
+                        promises.push(
+                            functions.executeSql(
+                                `
+                                    INSERT INTO 
+                                        sprints_hours_users
+                                        (user_id, sprint_id, hours)
+                                    VALUES
+                                        (?, ?, ?)
+                                `, [currentUser.id, results.insertId, currentUser.horas]
+                            )
+                        )
+                    }
+                    
+                    Promise.all(promises).then(() => {
+                        resolve();
+                    }).catch((error) => {
+                        reject(error);
+                    })
+                }
+            })
+        })
+    },
+    returnSprint: function (project_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        id
+                    FROM
+                        sprints
+                    WHERE
+                        group_id = ?
+                `, [project_id]
+            ).then((results) => {
+                if (results.length > 0) {
+                    resolve(results);
+                } else {
+                    resolve(null);
+                }
+            }).catch((error) => {
+                reject(error);
+            })
+        })
     }
 }
 

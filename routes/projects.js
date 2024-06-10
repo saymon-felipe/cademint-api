@@ -3,6 +3,7 @@ const router = express.Router();
 const login = require("../middleware/login");
 const crypto = require('crypto');
 const uploadConfig = require('../config/upload');
+const functions = require("../utils/functions");
 const _projectsService = require("../services/projectsService");
 
 router.get("/", (req, res, next) => {
@@ -284,5 +285,34 @@ router.post('/delete_group', login, (req, res, next) => {
         return res.status(401).send(response);
     })
 });
+
+router.post("/sprint/create", login, (req, res, next) => {
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
+        _projectsService.createSprint(req.body.project_id, req.body.name, req.body.period, req.body.users).then(() => {
+            let response = functions.createResponse("Sprint criado com sucesso", null, "POST", 200);
+            return res.status(200).send(response);
+        }).catch((error) => {
+            console.log(error)
+            return res.status(500).send(error);
+        })
+    }).catch((error) => {
+        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
+        return res.status(401).send(response);
+    })
+})
+
+router.post("/sprint", login, (req, res, next) => {
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
+        _projectsService.returnSprint(req.body.project_id).then((results) => {
+            let response = functions.createResponse("Retorno do sprint", results, "POST", 200);
+            return res.status(200).send(response);
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch((error) => {
+        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
+        return res.status(401).send(response);
+    })
+})
 
 module.exports = router;
