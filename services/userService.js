@@ -721,7 +721,7 @@ let userService = {
             })
         })
     },
-    uploadBanner: function (userId) {
+    uploadBanner: function (fileUrl, userId) {
         return new Promise((resolve, reject) => {
             functions.executeSql(
                 `
@@ -731,7 +731,7 @@ let userService = {
                         user_cover_image = ?
                     WHERE
                         id_usuario = ?
-                `, [userId]
+                `, [fileUrl, userId]
             ).then((results) => {
                 resolve();
             }).catch((error) => {
