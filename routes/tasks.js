@@ -88,14 +88,7 @@ router.post('/', login, (req, res, next) => {
 });
 
 router.post("/edit_task_comment", login, (req, res, next) => {
-    let comment = {
-        desc_comentario: req.body.desc_comentario,
-        id_usuario: req.usuario.id_usuario,
-        data_criacao_comentario: req.body.data_criacao_comentario,
-        id_task: req.body.id_task
-    }
-
-    _taskService.editComment(comment, req.usuario.id_usuario).then(() => {
+    _taskService.editComment(req.body.comment, req.usuario.id_usuario).then(() => {
         let response = functions.createResponse("Comentário editado com sucesso", null, "POST", 200);
         return res.status(200).send(response);
     }).catch((error) => {
