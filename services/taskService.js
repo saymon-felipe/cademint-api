@@ -142,6 +142,24 @@ let taskService = {
             })
         })
     },
+    editComment: function (comment, id_usuario) {
+        return new Promise ((resolve, reject) => {
+            functions.executeSql(
+                `
+                    UPDATE
+                        task_comments
+                    SET
+                        desc_comentario = ?, data_ultima_alteracao = CURRENT_TIMESTAMP()
+                    WHERE
+                        id_comentario = ? AND criador_comentario = ?
+                `, [comment.desc_comentario, comment.id_comentario, id_usuario]
+            ).then(() => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
     insertComment: function (comment) {
         return new Promise((resolve, reject) => {
             functions.executeSql(`

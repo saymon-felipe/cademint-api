@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const login = require("../middleware/login");
 const _taskService = require("../services/taskService");
+const functions = require("../utils/functions");
 
 router.post('/return_os_list', login, (req, res, next) => {
     let response = {
@@ -85,6 +86,22 @@ router.post('/', login, (req, res, next) => {
         return res.status(500).send(error);
     })
 });
+
+router.post("/edit_task_comment", login, (req, res, next) => {
+    let comment = {
+        desc_comentario: req.body.desc_comentario,
+        id_usuario: req.usuario.id_usuario,
+        data_criacao_comentario: req.body.data_criacao_comentario,
+        id_task: req.body.id_task
+    }
+
+    _taskService.editComment(comment, req.usuario.id_usuario).then(() => {
+        let response = functions.createResponse("Comentário editado com sucesso", null, "POST", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(401).send(error);
+    })
+})
 
 router.post('/task_comment', login, (req, res, next) => {
     let comment = {
