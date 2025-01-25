@@ -267,7 +267,8 @@ let taskService = {
                             group_owner: results[0].group_owner,
                             pending_users: pending_users,
                             image: results[0].image,
-                            group_description: results[0].group_description
+                            group_description: results[0].group_description,
+                            status: results[0].status
                         }
 
                         resolve(group);
@@ -660,7 +661,25 @@ let taskService = {
             })
         })
     },
-    returnColumns: function (project_id, status) {
+    returnStatus: function (project_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        status
+                    FROM
+                        os_groups
+                    WHERE
+                        groups_id = ?
+                `, [project_id]
+            ).then((results) => {
+                resolve(results);
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    changeStatus: function (project_id, status) {
         return new Promise((resolve, reject) => {
             functions.executeSql(
                 `
@@ -669,7 +688,7 @@ let taskService = {
                     SET
                         status = ?
                     WHERE
-                        group_id = ?
+                        groups_id = ?
                 `, [status, project_id]
             ).then((results) => {
                 resolve();

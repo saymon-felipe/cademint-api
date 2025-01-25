@@ -338,16 +338,20 @@ router.post("/columns", login, (req, res, next) => {
 })
 
 router.post("/status", login, (req, res, next) => {
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
-        _projectsService.changeStatus(req.body.project_id, req.body.status).then(() => {
-            let response = functions.createResponse("Status do projeto alterado", null, "POST", 200);
-            return res.status(200).send(response);
-        }).catch((error) => {
-            return res.status(500).send(error);
-        })
+    _projectsService.returnStatus(req.body.project_id, req.body.status).then((results) => {
+        let response = functions.createResponse("Retorno do status do projeto", results, "POST", 200);
+        return res.status(200).send(response);
     }).catch((error) => {
-        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
-        return res.status(401).send(response);
+        return res.status(500).send(error);
+    })
+})
+
+router.post("/status/change", login, (req, res, next) => {
+    _projectsService.changeStatus(req.body.project_id, req.body.status).then(() => {
+        let response = functions.createResponse("Status do projeto alterado", null, "POST", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
     })
 })
 
