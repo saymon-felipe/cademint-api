@@ -41,4 +41,6 @@ END;
 
 alter table os_groups add column status int not null default 1;
 
+ALTER TABLE user_occupations MODIFY COLUMN occupation_name VARCHAR(50);
+
 insert into versaodb (versao) values ("25.01.03");

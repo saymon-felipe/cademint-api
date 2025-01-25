@@ -194,7 +194,7 @@ router.patch("/exclude_occupation", login, (req, res, next) => {
 });
 
 router.patch("/add_occupation", login, (req, res, next) => {
-    if (req.body.user_occupation == "" || req.body.user_occupation < 3) {
+    if (req.body.user_occupation.length > 50 || req.body.user_occupation == "" || req.body.user_occupation < 3) {
         return res.status(401).send({ error: "Cargo inválido!" });
     }
 
