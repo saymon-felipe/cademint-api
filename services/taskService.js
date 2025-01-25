@@ -43,11 +43,11 @@ let taskService = {
                 FROM
                     os_ambient
                 INNER JOIN 
-                    usuarios sponsor
+                    users sponsor
                 ON
                     sponsor.id_usuario = os_ambient.sponsor
                 INNER JOIN
-                    usuarios owner 
+                    users owner 
                 ON
                     owner.id_usuario = os_ambient.user_owner
                 WHERE
@@ -213,7 +213,7 @@ let taskService = {
                 ON
                     likes.task_comment_id = task_comments.id_comentario
                 INNER JOIN
-                    usuarios criador
+                    users criador
                 ON
                     criador.id_usuario = task_comments.criador_comentario
                 WHERE

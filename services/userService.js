@@ -29,7 +29,7 @@ let userService = {
                     SELECT
                         reset_password_token
                     FROM
-                        usuarios
+                        users
                     WHERE
                         reset_password_token = ? AND reset_password_require_date >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 MINUTE)
                 `, [token]
@@ -51,7 +51,7 @@ let userService = {
                         SELECT
                             senha, id_usuario
                         FROM
-                            usuarios
+                            users
                         WHERE
                             reset_password_token = ?
                     `, [token]
@@ -66,7 +66,7 @@ let userService = {
                                 functions.executeSql(
                                     `
                                         UPDATE
-                                            usuarios
+                                            users
                                         SET
                                             senha = ?, reset_password_token = ""
                                         WHERE
@@ -152,7 +152,7 @@ let userService = {
             functions.executeSql(
                 `
                     UPDATE
-                        usuarios
+                        users
                     SET
                         user_bio = ?
                     WHERE
@@ -210,7 +210,7 @@ let userService = {
                             user_cover_image,
                             user_bio
                         FROM
-                            usuarios
+                            users
                         WHERE
                             id_usuario = ?
                     `, [userId]
@@ -242,7 +242,7 @@ let userService = {
                     SELECT
                         id_usuario
                     FROM
-                        usuarios u
+                        users u
                     LEFT JOIN
                         group_members gm ON gm.user_id = u.id_usuario
                     WHERE
@@ -399,7 +399,7 @@ let userService = {
                     SELECT
                         id_usuario
                     FROM
-                        usuarios
+                        users
                     WHERE 
                         email = ?
                 `, [userEmail]
@@ -453,7 +453,7 @@ let userService = {
                     SELECT
                         id_usuario
                     FROM
-                        usuarios
+                        users
                     WHERE
                         email = ?
                 `, [userEmail]
@@ -469,7 +469,7 @@ let userService = {
                         functions.executeSql(
                             `
                                 INSERT INTO
-                                    usuarios
+                                    users
                                     (nome, email, senha, profile_photo, user_cover_image)
                                 VALUES
                                     (?, ?, ?, ?, ?)
@@ -488,8 +488,9 @@ let userService = {
 
                             let groupName = "Projeto de " + userName;
                             _projectsService.createGroup(groupName, results2.insertId).then(() => {
-                                self.insertUserAchievement(results2.insertId, 1);
-                                resolve(createdUser);
+                                self.insertUserAchievement(results2.insertId, 1).then(() => {
+                                    resolve(createdUser);
+                                });
                             }).catch((error3) => {
                                 reject(error3);
                             })
@@ -530,7 +531,7 @@ let userService = {
                     functions.executeSql(
                         `
                             DELETE FROM
-                                usuarios
+                                users
                             WHERE
                                 id_usuario = ?
                         `, [userId]
@@ -554,7 +555,7 @@ let userService = {
                     SELECT
                         id_usuario
                     FROM
-                        usuarios
+                        users
                     WHERE
                         nome LIKE '%${search}%'
                         AND id_usuario NOT IN (1, 2, ${connectedUserId})
@@ -615,7 +616,7 @@ let userService = {
                     SELECT
                         id_usuario
                     FROM
-                        usuarios
+                        users
                     WHERE
                         id_usuario = ?
                 `, [userId]
@@ -633,7 +634,7 @@ let userService = {
                     SELECT
                         profile_photo
                     FROM
-                        usuarios
+                        users
                     WHERE
                         id_usuario = ?
                 `, [userId]
@@ -645,7 +646,7 @@ let userService = {
                 functions.executeSql(
                     `
                         UPDATE
-                            usuarios
+                            users
                         SET
                             profile_photo = ?
                         WHERE
@@ -672,7 +673,7 @@ let userService = {
                     SELECT
                         user_cover_image
                     FROM
-                        usuarios
+                        users
                     WHERE
                         id_usuario = ?
                 `, [userId]
@@ -683,7 +684,7 @@ let userService = {
                 functions.executeSql(
                     `
                         UPDATE
-                            usuarios
+                            users
                         SET
                             user_cover_image = ?
                         WHERE
@@ -708,7 +709,7 @@ let userService = {
             functions.executeSql(
                 `
                     UPDATE
-                        usuarios
+                        users
                     SET
                         profile_photo = ?
                     WHERE
@@ -726,7 +727,7 @@ let userService = {
             functions.executeSql(
                 `
                     UPDATE
-                        usuarios
+                        users
                     SET
                         user_cover_image = ?
                     WHERE
@@ -748,7 +749,7 @@ let userService = {
                     SELECT
                         id_usuario
                     FROM
-                        usuarios
+                        users
                     WHERE
                         email = ?
                 `, [userEmail]
@@ -760,7 +761,7 @@ let userService = {
                     functions.executeSql(
                         `
                             UPDATE
-                                usuarios
+                                users
                             SET
                                 reset_password_token = ?, reset_password_require_date = CURRENT_TIMESTAMP()
                             WHERE
@@ -790,7 +791,7 @@ let userService = {
                     SELECT
                         *
                     FROM
-                        usuarios
+                        users
                     WHERE
                         email = ?
                 `, [email]

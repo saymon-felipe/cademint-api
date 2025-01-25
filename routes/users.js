@@ -322,7 +322,7 @@ router.post("/forgot_password", (req, res, next) => {
     })
 });
 
-router.post("/cadastro", (req, res, next) => {
+router.post("/register", (req, res, next) => {
     let response = {
         message: "Cadastro efetuado com sucesso",
         returnObj: {},

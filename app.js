@@ -6,7 +6,7 @@ const bodyParser = require("body-parser");
 const cors = require('cors');
 
 const rotaTarefas = require('./routes/tasks');
-const rotaUsuarios = require('./routes/usuarios');
+const rotaUsuarios = require('./routes/users');
 const rotaSystem = require('./routes/system');
 const rotaProjetos = require('./routes/projects');
 const rotaSite = require('./routes/site');
@@ -34,7 +34,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/task', rotaTarefas);
-app.use('/usuarios', rotaUsuarios);
+app.use('/users', rotaUsuarios);
 app.use('/system', rotaSystem);
 app.use('/projects', rotaProjetos);
 app.use('/site', rotaSite);

@@ -48,7 +48,7 @@ let userLevel = {
                         level_progress,
                         user_level
                     FROM
-                        usuarios
+                        users
                     WHERE
                         id_usuario = ?
                 `, [user_id]
@@ -72,7 +72,7 @@ let userLevel = {
             functions.executeSql(
                 `
                     UPDATE
-                        usuarios
+                        users
                     SET
                         user_level = ?, level_progress = ?
                     WHERE

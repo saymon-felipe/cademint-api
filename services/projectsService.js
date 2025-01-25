@@ -296,9 +296,9 @@ let taskService = {
                         user_cover_image,
                         user_bio
                     FROM
-                        usuarios
+                        users
                     LEFT JOIN
-                        group_members ug ON ug.user_id = usuarios.id_usuario AND ug.user_id
+                        group_members ug ON ug.user_id = users.id_usuario AND ug.user_id
                     WHERE
                         ug.group_id = ?
                 `, [group_id]
