@@ -286,13 +286,68 @@ router.post('/delete_group', login, (req, res, next) => {
     })
 });
 
+router.post("/columns/create", login, (req, res, next) => {
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
+        _projectsService.createColumn(req.body.project_id).then(() => {
+            let response = functions.createResponse("Coluna criada com sucesso", null, "POST", 200);
+            return res.status(200).send(response);
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch((error) => {
+        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
+        return res.status(401).send(response);
+    })
+})
+
+router.post("/columns/rename", login, (req, res, next) => {
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
+        _projectsService.renameColumn(req.body.column_id, req.body.name).then(() => {
+            let response = functions.createResponse("Coluna renomeada com sucesso", null, "POST", 200);
+            return res.status(200).send(response);
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch((error) => {
+        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
+        return res.status(401).send(response);
+    })
+})
+
+router.post("/columns/delete", login, (req, res, next) => {
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
+        _projectsService.deleteColumn(req.body.column_id).then(() => {
+            let response = functions.createResponse("Coluna excluída com sucesso", null, "POST", 200);
+            return res.status(200).send(response);
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch((error) => {
+        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
+        return res.status(401).send(response);
+    })
+})
+
+router.post("/columns", login, (req, res, next) => {
+    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
+        _projectsService.returnColumns(req.body.project_id).then((results) => {
+            let response = functions.createResponse("Retorno das colunas do projeto" + req.body.project_id, results, "GET", 200);
+            return res.status(200).send(response);
+        }).catch((error) => {
+            return res.status(500).send(error);
+        })
+    }).catch((error) => {
+        let response = functions.createResponse(error || "Permissão negada", null, "GET", 401);
+        return res.status(401).send(response);
+    })
+})
+
 router.post("/sprint/create", login, (req, res, next) => {
     _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
         _projectsService.createSprint(req.body.project_id, req.body.name, req.body.period, req.body.users).then(() => {
             let response = functions.createResponse("Sprint criado com sucesso", null, "POST", 200);
             return res.status(200).send(response);
         }).catch((error) => {
-            console.log(error)
             return res.status(500).send(error);
         })
     }).catch((error) => {

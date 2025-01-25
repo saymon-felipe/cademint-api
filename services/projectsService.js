@@ -573,6 +573,93 @@ let taskService = {
             })
         })
     },
+    createColumn: function (project_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    INSERT INTO
+                        kanban_columns
+                        (name, group_id)
+                    VALUES
+                        (?, ?)
+                `, ["Nova coluna", project_id]
+            ).then(() => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    renameColumn: function (column_id, name) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    UPDATE
+                        kanban_columns
+                    SET
+                        name = ?
+                    WHERE
+                        id = ?
+                `, [name, column_id]
+            ).then(() => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    deleteColumn: function (column_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    DELETE FROM
+                        os_ambient
+                    WHERE
+                        status_os = ?
+                `, [column_id]
+            ).then(() => {
+                functions.executeSql(
+                    `
+                        DELETE FROM
+                            kanban_columns
+                        WHERE
+                            id = ?
+                    `, [column_id]
+                ).then(() => {
+                    resolve();
+                }).catch((error) => {
+                    reject(error);
+                })
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    returnColumns: function (project_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT * FROM
+                        kanban_columns
+                    WHERE
+                        group_id = ?
+                `, [project_id]
+            ).then((results) => {
+                let columns = results.map((column) => {
+                    return {
+                        id: column.id,
+                        name: column.name,
+                        group_id: column.group_id,
+                        tasks: []
+                    }
+                })
+
+                resolve(columns);
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
     createSprint: function (project_id, name, period, users) {
         return new Promise((resolve, reject) => {
             functions.executeSql(
