@@ -39,4 +39,6 @@ WHERE kc.name = CASE oa.status_os
     WHEN 4 THEN 'Concluído'
 END;
 
+alter table os_groups add column status int not null default 1;
+
 insert into versaodb (versao) values ("25.01.03");
