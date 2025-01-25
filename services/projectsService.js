@@ -660,6 +660,24 @@ let taskService = {
             })
         })
     },
+    returnColumns: function (project_id, status) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    UPDATE
+                        os_groups
+                    SET
+                        status = ?
+                    WHERE
+                        group_id = ?
+                `, [status, project_id]
+            ).then((results) => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
     createSprint: function (project_id, name, period, users) {
         return new Promise((resolve, reject) => {
             functions.executeSql(

@@ -28,4 +28,15 @@ CROSS JOIN (
     SELECT 'Concluído'
 ) AS columns_data;
 
+UPDATE os_ambient AS oa
+JOIN kanban_columns AS kc
+ON oa.group_id = kc.group_id
+SET oa.status_os = kc.id
+WHERE kc.name = CASE oa.status_os
+    WHEN 1 THEN 'A Fazer'
+    WHEN 2 THEN 'Fazendo'
+    WHEN 3 THEN 'Teste'
+    WHEN 4 THEN 'Concluído'
+END;
+
 insert into versaodb (versao) values ("25.01.03");

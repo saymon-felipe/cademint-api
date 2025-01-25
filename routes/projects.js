@@ -329,15 +329,24 @@ router.post("/columns/delete", login, (req, res, next) => {
 })
 
 router.post("/columns", login, (req, res, next) => {
+    _projectsService.returnColumns(req.body.project_id).then((results) => {
+        let response = functions.createResponse("Retorno das colunas do projeto" + req.body.project_id, results, "POST", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
+})
+
+router.post("/status", login, (req, res, next) => {
     _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
-        _projectsService.returnColumns(req.body.project_id).then((results) => {
-            let response = functions.createResponse("Retorno das colunas do projeto" + req.body.project_id, results, "GET", 200);
+        _projectsService.changeStatus(req.body.project_id, req.body.status).then(() => {
+            let response = functions.createResponse("Status do projeto alterado", null, "POST", 200);
             return res.status(200).send(response);
         }).catch((error) => {
             return res.status(500).send(error);
         })
     }).catch((error) => {
-        let response = functions.createResponse(error || "Permissão negada", null, "GET", 401);
+        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
         return res.status(401).send(response);
     })
 })
