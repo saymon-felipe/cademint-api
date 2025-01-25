@@ -235,7 +235,7 @@ router.post('/check_permission', login, (req, res, next) => {
 });
 
 router.patch('/os_status', login, (req, res, next) => {
-    _taskService.changeTaskStatus(req.body.status_os, req.body.id).then(() => {
+    _taskService.changeTaskStatus(req.body.status_os, req.body.reorderedColumn, req.body.id).then(() => {
         let response = {
             message: "Status da tarefa alterado com sucesso",
             returnObj: {},

@@ -1,3 +1,4 @@
+const { promises } = require("nodemailer/lib/xoauth2");
 const functions = require("../utils/functions");
 
 let taskService = {
@@ -36,6 +37,7 @@ let taskService = {
                     os_ambient.group_id,
                     os_ambient.user_owner,
                     os_ambient.task_create_date,
+                    os_ambient.task_index,
                     sponsor.nome AS sponsor_name,
                     owner.nome AS user_owner_name
                 FROM
@@ -65,7 +67,8 @@ let taskService = {
                             user_owner: os.user_owner,
                             size: os.size,
                             group_id: os.group_id,
-                            task_create_date: os.task_create_date
+                            task_create_date: os.task_create_date,
+                            task_index: os.task_index
                         }
                     })
                 }
@@ -352,7 +355,7 @@ let taskService = {
             })
         })
     },
-    changeTaskStatus: function (status, taskId) {
+    changeTaskStatus: function (status, reorderedColumn, taskId) {
         return new Promise((resolve, reject) => {
             functions.executeSql(`
                 UPDATE
@@ -363,7 +366,25 @@ let taskService = {
                     id = ?
             `, [status, taskId])
             .then((results) => {
-                resolve();
+                let promises = [];
+                let orderedTasks = [];
+
+                orderedTasks = reorderedColumn.map((item, index) => {
+                    return {
+                        id: item.id,
+                        index: index
+                    }
+                })
+
+                for (let i = 0; i < orderedTasks.length; i++) {
+                    let currentTask = orderedTasks[i];
+
+                    promises.push(functions.executeSql(" UPDATE os_ambient SET task_index = ? WHERE id = ? ", [currentTask.index, currentTask.id]))
+                }
+
+                Promise.all(promises).then(() => {
+                    resolve();
+                })
             })
             .catch((error) => {
                 reject(error);
