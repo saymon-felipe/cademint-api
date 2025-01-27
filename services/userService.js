@@ -246,7 +246,7 @@ let userService = {
                     LEFT JOIN
                         group_members gm ON gm.user_id = u.id_usuario
                     WHERE
-                        gm.group_id = ?
+                        gm.group_id = ? AND u.id_usuario <> 1 AND u.id_usuario <> 2
                 `, [group_id]
             ).then((results) => {
                 let promises = [];
