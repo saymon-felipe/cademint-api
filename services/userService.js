@@ -305,6 +305,12 @@ let userService = {
                 let groups = results;
                 let promises = [];
 
+                groups.sort((a, b) => {
+                    if (a.group_name.toLowerCase() < b.group_name.toLowerCase()) return -1;
+                    if (a.group_name.toLowerCase() > b.group_name.toLowerCase()) return 1;
+                    return 0;
+                });
+
                 for (let i = 0; i < groups.length; i++) {
                     let currentGroup = groups[i];
 
