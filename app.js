@@ -5,6 +5,14 @@ const morgan = require('morgan');
 const bodyParser = require("body-parser");
 const cors = require('cors');
 
+const jobs = require("./custom/jobs");
+
+jobs.executeJobs();
+
+setInterval(() => {
+    jobs.executeJobs();
+}, 10 * 60 * 1000) //Dez minutos de intervalo;
+
 const rotaTarefas = require('./routes/tasks');
 const rotaUsuarios = require('./routes/users');
 const rotaSystem = require('./routes/system');

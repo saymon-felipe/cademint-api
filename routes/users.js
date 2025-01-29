@@ -3,6 +3,7 @@ const router = express.Router();
 const login = require("../middleware/login");
 const uploadConfig = require('../config/upload');
 const _userService = require("../services/userService");
+const functions = require("../utils/functions");
 
 router.post("/validate_reset_password_token", (req, res, next) => {
     _userService.checkResetPasswordToken(req.body.token).then((results) => {
@@ -385,5 +386,15 @@ router.post("/exclude_user", login, (req, res, next) => {
         return res.status(500).send(error);
     })
 });
+
+router.post("/update_preferences", login, (req, res, next) => {
+    _userService.updatePreferences(req.usuario.id_usuario, req.body.preferences).then(() => {
+        let response = functions.createResponse("Preferências alteradas com sucesso", null, "POST", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        console.log(error)
+        return res.status(401).send(error);
+    })
+})
 
 module.exports = router;

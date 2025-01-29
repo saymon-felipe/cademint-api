@@ -208,7 +208,10 @@ let userService = {
                             user_level,
                             level_progress,
                             user_cover_image,
-                            user_bio
+                            user_bio,
+                            tel,
+                            receive_notifications,
+                            days_recurrency
                         FROM
                             users
                         WHERE
@@ -224,6 +227,11 @@ let userService = {
                         level_progress: results[0].level_progress,
                         user_cover_image: results[0].user_cover_image,
                         user_bio: results[0].user_bio,
+                        notifications: {
+                            enable: results[0].receive_notifications == 1,
+                            days_recurrency: results[0].days_recurrency,
+                            tel: results[0].tel
+                        },
                         user_achievements: userAchievements,
                         user_medals: userMedals,
                         user_occupations: userOccupations
@@ -843,6 +851,24 @@ let userService = {
                         reject(error2);
                     })
                 }
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    updatePreferences: function (user_id, preferences) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    UPDATE
+                        users
+                    SET
+                        receive_notifications = ?, days_recurrency = ?, tel = ?
+                    WHERE
+                        id_usuario = ?
+                `, [preferences.enable ? 1 : 0, preferences.days_recurrency != "" ? preferences.days_recurrency : 0, preferences.tel, user_id]
+            ).then((results) => {
+                resolve();
             }).catch((error) => {
                 reject(error);
             })

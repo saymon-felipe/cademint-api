@@ -6,7 +6,8 @@ let pool = mysql.createPool({
     database: process.env.MYSQL_DATABASE,
     host: process.env.MYSQL_HOST,
     port: process.env.MYSQL_PORT,
-    connectionLimit: 8
+    connectionLimit: 8,
+    multipleStatements: true
 });
 
 exports.pool = pool;
