@@ -6,10 +6,8 @@ const bodyParser = require("body-parser");
 const cors = require('cors');
 
 const jobs = require("./custom/jobs");
-const whatsappSender = require("./config/whatsappSender");
 
-jobs.init();
-whatsappSender.init();
+//jobs.init();
 
 const rotaTarefas = require('./routes/tasks');
 const rotaUsuarios = require('./routes/users');

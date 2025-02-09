@@ -1,14 +1,17 @@
 const functions = require("../utils/functions");
 const whatsappTemplates = require("../templates/whatsappTemplates");
 const _userService = require("../services/userService");
+const axios = require('axios');
 
 let jobs = {
     init: function () {
-        jobs.executeJobs();
+        this.executeJobs();
 
         setInterval(() => {
-            jobs.executeJobs(); // Dez minutos de intervalo;
+            this.executeJobs(); // Dez minutos de intervalo;
         }, 10 * 60 * 1000)
+
+        this.sendPendentMessagesFromWhatsappQueue();
     },
     executeJobs: function () {
         functions.executeSql(
@@ -41,6 +44,35 @@ let jobs = {
 
                 functions.insertWhatsappQueue(message, user.tel);
             });
+        })
+    },
+    sendPendentMessagesFromWhatsappQueue: function () {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    SELECT
+                        *
+                    FROM
+                        whatsapp_fila
+                    WHERE
+                        status = "pendente" LIMIT 10
+                `, []
+            ).then((results) => {
+                axios.post(process.env.URL_WHATSAPP_BOT + "/whatsapp/send_messages", results, {
+                    headers: {
+                      'Authorization': `Bearer ${process.env.WHATSAPP_BOT_ACCESS_KEY}`
+                    }
+                })
+                .then()
+                .catch()
+                .then(() => {
+                    setTimeout(() => {
+                        this.sendPendentMessagesFromWhatsappQueue();
+                    }, 10000)
+                })
+            }).catch(((error) => {
+                reject(error);
+            }))
         })
     }
 }
