@@ -87,6 +87,13 @@ async function processarFila() {
             console.log("WhatsApp desconectado. Tentando reconectar...");
             client.emit('qr', 'novo_qr_code_gerado');
         }
+
+        if (global.gc) {
+            console.log("🔄 Liberando memória...");
+            global.gc();
+        } else {
+            console.log("⚠️ Garbage Collector não está habilitado. Inicie o Node com '--expose-gc'");
+        }
     } catch (error) {
         console.error("Erro ao processar fila:", error);
     } finally {
@@ -113,6 +120,13 @@ function startClient() {
                     "--disable-breakpad",
                     "--disable-extensions",
                     "--disable-sync",
+                    "--disable-features=site-per-process",
+                    "--disable-site-isolation-trials",
+                    "--disable-gl-drawing-for-tests",
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                    "--disable-infobars",
+                    "--disable-popup-blocking"
                 ],
                 headless: "new"
             }
@@ -145,6 +159,12 @@ function startClient() {
         });
 
         client.initialize();
+
+        setTimeout(async () => {
+            console.log("♻️ Reiniciando WhatsApp para liberar memória...");
+            await client.destroy();
+            startClient();
+        }, 5000);
     } catch (error) {
         console.error("Erro ao iniciar o cliente:", error);
     }
