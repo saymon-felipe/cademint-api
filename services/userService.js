@@ -90,9 +90,28 @@ let userService = {
             })
         })
     },
-    returnUsers: function () {
+    returnUsersById: function (users_id) {
         return new Promise((resolve, reject) => {
-
+            functions.executeSql(
+                `
+                    SELECT
+                        id_usuario,
+                        email,
+                        nome,
+                        profile_photo,
+                        user_level,
+                        user_bio,
+                        CONCAT("55", tel) AS tel
+                    FROM
+                        users
+                    WHERE
+                        id_usuario IN (?)
+                `, [users_id.join(",")]
+            ).then((results) => {
+                resolve(results);
+            }).catch((error) => {
+                reject(error);
+            })
         })
     },
     returnUserOccupations: function (userId) {

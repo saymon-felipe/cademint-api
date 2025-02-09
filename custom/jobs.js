@@ -1,6 +1,15 @@
 const functions = require("../utils/functions");
+const whatsappTemplates = require("../templates/whatsappTemplates");
+const _userService = require("../services/userService");
 
 let jobs = {
+    init: function () {
+        jobs.executeJobs();
+
+        setInterval(() => {
+            jobs.executeJobs(); // Dez minutos de intervalo;
+        }, 10 * 60 * 1000)
+    },
     executeJobs: function () {
         functions.executeSql(
             `
@@ -20,28 +29,18 @@ let jobs = {
         })
     },
     sendNotifications: function (idArray) {
-        let array = [];
+        let usersIdArray = [];
 
         for (let i = 0; i < idArray.length; i++) {
-            array.push(idArray[0].id)
+            usersIdArray.push(idArray[0].id);
         }
 
-        functions.executeSql(
-            `
-                SELECT
-                    id_usuario,
-                    tel,
-                    nome
-                FROM
-                    users
-                WHERE id_usuario IN (?)
-            `, [array.join(",")]
-        ).then((results) => {
-            for (let i = 0; i < results.length; i++) {
-                let currentUser = results[i];
+        _userService.returnUsersById(usersIdArray).then((users) => {
+            users.forEach(user => {
+                let message = whatsappTemplates.notificacaoUso(user.nome);
 
-                //TODO: Fazer envio de whatsapp para o numero com notificação de uso da plataforma
-            }
+                functions.insertWhatsappQueue(message, user.tel);
+            });
         })
     }
 }

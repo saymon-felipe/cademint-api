@@ -1,2 +1,4 @@
 node_modules
 nodemon.json
+.wwebjs_auth
+.wwebjs_cache

@@ -6,12 +6,10 @@ const bodyParser = require("body-parser");
 const cors = require('cors');
 
 const jobs = require("./custom/jobs");
+const whatsappSender = require("./config/whatsappSender");
 
-jobs.executeJobs();
-
-setInterval(() => {
-    jobs.executeJobs();
-}, 10 * 60 * 1000) //Dez minutos de intervalo;
+jobs.init();
+whatsappSender.initialize();
 
 const rotaTarefas = require('./routes/tasks');
 const rotaUsuarios = require('./routes/users');

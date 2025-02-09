@@ -37,23 +37,6 @@ router.patch("/change_password", (req, res, next) => {
     })
 });
 
-router.get("/", (req, res, next) => {
-    _userService.returnUsers().then((results) => {
-        let response = {
-            message: "Retorno de todos os usuários",
-            returnObj: results,
-            request: {
-                type: "PATCH",
-                status: 200
-            }
-        }
-
-        return res.status(200).send(response);
-    }).catch((error) => {
-        return res.status(500).send(error);
-    })
-});
-
 router.get("/return_users_occupations", login, (req, res, next) => {
     _userService.returnUserOccupations(req.usuario.id_usuario).then((results) => {
         let response = {

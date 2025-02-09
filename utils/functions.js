@@ -31,6 +31,23 @@ let functions = {
 
         return response;
     },
+    insertWhatsappQueue: function (message, target_tel) {
+        return new Promise((resolve, reject) => {
+            this.executeSql(
+                `
+                    INSERT INTO
+                        whatsapp_fila
+                        (destinatario, mensagem)
+                    VALUES
+                        (?, ?)
+                `, [target_tel, message]
+            ).then(() => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    }
 }
 
 module.exports = functions;
