@@ -164,7 +164,7 @@ function startClient() {
             console.log("♻️ Reiniciando WhatsApp para liberar memória...");
             await client.destroy();
             startClient();
-        }, 5000);
+        },  30 * 60 * 1000);
     } catch (error) {
         console.error("Erro ao iniciar o cliente:", error);
     }
