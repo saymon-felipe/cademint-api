@@ -183,42 +183,10 @@ async function startClient() {
         });
 
         client.initialize();
-
-        setTimeout(async () => {
-            console.log("♻️ Reiniciando WhatsApp para liberar memória...");
-            await client.destroy();
-            startClient();
-        },  30 * 60 * 1000);
     } catch (error) {
         console.error("Erro ao iniciar o cliente:", error);
     }
 }
-
-process.on("SIGTERM", async () => {
-    console.log("🔴 Recebido SIGTERM. Encerrando processos...");
-    
-    if (client) {
-        try {
-            await client.destroy();
-            console.log("✅ Cliente do WhatsApp destruído.");
-        } catch (error) {
-            console.error("Erro ao destruir cliente do WhatsApp:", error);
-        }
-    }
-
-    if (client?.pupBrowser) {
-        try {
-            await client.pupBrowser.close();
-            console.log("✅ Puppeteer fechado.");
-        } catch (error) {
-            console.error("Erro ao fechar Puppeteer:", error);
-        }
-    }
-
-    console.log("🚪 Finalizando aplicação...");
-    process.exit(0);
-});
-
 
 let whatsappSender = {
     init: () => startClient()
