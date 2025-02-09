@@ -105,7 +105,24 @@ async function processarFila() {
 
 async function restartWhatsApp(client) {
     console.log('🚨 WhatsApp desconectado. Reiniciando o cliente...');
-    await client.destroy();
+    
+    try {
+        await client.destroy();
+        console.log("Cliente do WhatsApp destruído.");
+    } catch (error) {
+        console.error("Erro ao destruir cliente do WhatsApp:", error);
+    }
+
+    // Se Puppeteer ainda estiver rodando, feche-o
+    if (client.pupBrowser) {
+        try {
+            await client.pupBrowser.close();
+            console.log("Puppeteer fechado.");
+        } catch (error) {
+            console.error("Erro ao fechar Puppeteer:", error);
+        }
+    }
+
     startClient(); // Reinicia automaticamente
 }
 
@@ -176,6 +193,31 @@ async function startClient() {
         console.error("Erro ao iniciar o cliente:", error);
     }
 }
+
+process.on("SIGTERM", async () => {
+    console.log("🔴 Recebido SIGTERM. Encerrando processos...");
+    
+    if (client) {
+        try {
+            await client.destroy();
+            console.log("✅ Cliente do WhatsApp destruído.");
+        } catch (error) {
+            console.error("Erro ao destruir cliente do WhatsApp:", error);
+        }
+    }
+
+    if (client?.pupBrowser) {
+        try {
+            await client.pupBrowser.close();
+            console.log("✅ Puppeteer fechado.");
+        } catch (error) {
+            console.error("Erro ao fechar Puppeteer:", error);
+        }
+    }
+
+    console.log("🚪 Finalizando aplicação...");
+    process.exit(0);
+});
 
 
 let whatsappSender = {
