@@ -8,7 +8,20 @@ const emailTemplates = require("../templates/emailTemplates");
 const user_email = "linnubr@gmail.com";
 
 const client = new Client({
-    authStrategy: new LocalAuth(), // Usar autenticação local para persistir sessão
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--no-first-run",
+            "--no-zygote",
+            "--single-process",
+            "--disable-gpu"
+        ],
+        headless: true
+    }
 });
 
 let sended_qrCode_email = false;
