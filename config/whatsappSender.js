@@ -4,6 +4,7 @@ const qrcode = require('qrcode');
 const functions = require("../utils/functions");
 const sendEmails = require("../config/sendEmail");
 const emailTemplates = require("../templates/emailTemplates");
+const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 
 const user_email = "linnubr@gmail.com";
 
@@ -66,12 +67,31 @@ async function enviarMensagem(destinatario, mensagem) {
 
 let isProcessing = false; // Variável de controle para evitar execuções simultâneas
 
-async function processarFila() {
+// Função para processar a fila de mensagens usando worker_threads
+function processarFilaComWorker() {
     if (isProcessing) return;
     isProcessing = true;
 
-    try {
-        if (client.info && client.info.pushname) {
+    const worker = new Worker(__filename, { workerData: 'processFila' });
+
+    worker.on('message', (msg) => {
+        console.log(msg);
+    });
+
+    worker.on('exit', (code) => {
+        if (code !== 0) {
+            console.error(`O worker finalizou com erro, código de saída: ${code}`);
+        } else {
+            console.log('Worker finalizado com sucesso');
+        }
+        isProcessing = false;
+    });
+}
+
+// Função que será executada pelo worker para processar a fila
+if (!isMainThread && workerData === 'processFila') {
+    (async () => {
+        try {
             const mensagens = await buscarMensagensPendentes();
             for (let msg of mensagens) {
                 await functions.executeSql(`UPDATE whatsapp_fila SET status = "enviando" WHERE id = ?`, [msg.id]);
@@ -83,139 +103,128 @@ async function processarFila() {
 
                 console.log(`WHATSAPP FILA: ${resultado.sucesso ? '✅' : '❌'} ${msg.destinatario}`);
             }
-        } else {
-            console.log("WhatsApp desconectado. Tentando reconectar...");
-            client.emit('qr', 'novo_qr_code_gerado');
-        }
-    } catch (error) {
-        console.error("Erro ao processar fila:", error);
-    } finally {
-        isProcessing = false;
-        
-        if (global.gc) {
-            global.gc(); // Força a coleta de lixo
-            console.log("🧹 Garbage Collection executado!");
-        } else {
-            console.warn("⚠️ Garbage Collection não está exposto! Use node --expose-gc.");
-        }
-
-        setTimeout(processarFila, 10000); // Aguarda 1 minuto antes de rodar novamente
-    }
-}
-
-async function restartWhatsApp(client) {
-    console.log('🚨 WhatsApp desconectado. Reiniciando o cliente...');
-    
-    try {
-        await client.destroy();
-        console.log("Cliente do WhatsApp destruído.");
-    } catch (error) {
-        console.error("Erro ao destruir cliente do WhatsApp:", error);
-    }
-
-    // Se Puppeteer ainda estiver rodando, feche-o
-    if (client.pupBrowser) {
-        try {
-            await client.pupBrowser.close();
-            console.log("Puppeteer fechado.");
         } catch (error) {
-            console.error("Erro ao fechar Puppeteer:", error);
+            console.error("Erro ao processar fila:", error);
+        } finally {
+            parentPort.postMessage('Fila processada!');
         }
-    }
-
-    startClient(); // Reinicia automaticamente
-}
-
-async function startClient() {
-    try {
-        if (client) {
-            console.log("Fechando instância antiga antes de iniciar nova...");
-            try {
-                await client.destroy();
-            } catch (error) {
-                console.error("Erro ao destruir cliente antigo:", error);
-            }
-        }
-
-        client = new Client({
-            authStrategy: new LocalAuth(),
-            puppeteer: {
-                executablePath: puppeteerPath,
-                args: [
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                    "--single-process",
-                    "--no-zygote",
-                    "--disable-background-timer-throttling",
-                    "--disable-breakpad",
-                    "--disable-software-rasterizer",
-                    "--disable-accelerated-2d-canvas",
-                    "--disable-background-networking"
-                ],
-                headless: true
-            }
-        });
-
-        client.on('qr', (qr) => {
-            console.log('⚡ Gerando QR Code...');
-            processarQRCode(qr);
-        });
-
-        client.on('ready', () => {
-            console.log("✅ WhatsApp Client is ready!");
-            let html = emailTemplates.adminWhatsappConected();
-            let title = `ADMIN CADEMINT: Conexão realizada! A conexão com o Whatsapp Sender foi realizada.`;
-            let from = "Ana da Cademint <ana.cademint@gmail.com>";
-
-            sended_qrCode_email = false;
-
-            if (process.env.URL_API.indexOf("https://") != -1) { // Só manda o email de conectado com sucesso quando não estiver no ambiente de desenvolvimento
-                sendEmails.sendEmail(html, title, from, user_email);
-            }
-            
-            processarFila();
-        });
-
-        client.on('disconnected', async () => {
-            restartWhatsApp(client);
-        });
-
-        client.initialize();
-    } catch (error) {
-        console.error("Erro ao iniciar o cliente:", error);
-    }
-}
-
-process.on("SIGTERM", async () => {
-    console.log("🛑 Recebido SIGTERM. Encerrando processos...");
-
-    if (client) {
+    })();
+} else {
+    // Lógica de reinício do WhatsApp
+    async function restartWhatsApp(client) {
+        console.log('🚨 WhatsApp desconectado. Reiniciando o cliente...');
+        
         try {
             await client.destroy();
-            console.log("✅ Cliente do WhatsApp destruído.");
+            console.log("Cliente do WhatsApp destruído.");
         } catch (error) {
             console.error("Erro ao destruir cliente do WhatsApp:", error);
         }
+
+        // Se Puppeteer ainda estiver rodando, feche-o
+        if (client.pupBrowser) {
+            try {
+                await client.pupBrowser.close();
+                console.log("Puppeteer fechado.");
+            } catch (error) {
+                console.error("Erro ao fechar Puppeteer:", error);
+            }
+        }
+
+        startClient(); // Reinicia automaticamente
     }
 
-    if (client?.pupBrowser) {
+    async function startClient() {
         try {
-            await client.pupBrowser.close();
-            console.log("✅ Puppeteer fechado.");
+            if (client) {
+                console.log("Fechando instância antiga antes de iniciar nova...");
+                try {
+                    await client.destroy();
+                } catch (error) {
+                    console.error("Erro ao destruir cliente antigo:", error);
+                }
+            }
+
+            client = new Client({
+                authStrategy: new LocalAuth(),
+                puppeteer: {
+                    executablePath: puppeteerPath,
+                    args: [
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--single-process",
+                        "--no-zygote",
+                        "--disable-background-timer-throttling",
+                        "--disable-breakpad",
+                        "--disable-software-rasterizer",
+                        "--disable-accelerated-2d-canvas",
+                        "--disable-background-networking",
+                        "--renderer-process-limit=1"
+                    ],
+                    headless: true
+                }
+            });
+
+            client.on('qr', (qr) => {
+                console.log('⚡ Gerando QR Code...');
+                processarQRCode(qr);
+            });
+
+            client.on('ready', () => {
+                console.log("✅ WhatsApp Client is ready!");
+                let html = emailTemplates.adminWhatsappConected();
+                let title = `ADMIN CADEMINT: Conexão realizada! A conexão com o Whatsapp Sender foi realizada.`;
+                let from = "Ana da Cademint <ana.cademint@gmail.com>";
+
+                sended_qrCode_email = false;
+
+                if (process.env.URL_API.indexOf("https://") != -1) { // Só manda o email de conectado com sucesso quando não estiver no ambiente de desenvolvimento
+                    sendEmails.sendEmail(html, title, from, user_email);
+                }
+                
+                processarFilaComWorker(); // Usa Worker para processar a fila
+            });
+
+            client.on('disconnected', async () => {
+                restartWhatsApp(client);
+            });
+
+            client.initialize();
         } catch (error) {
-            console.error("Erro ao fechar Puppeteer:", error);
+            console.error("Erro ao iniciar o cliente:", error);
         }
     }
 
-    console.log("🚪 Finalizando aplicação...");
-    process.exit(0);
-});
+    process.on("SIGTERM", async () => {
+        console.log("🛑 Recebido SIGTERM. Encerrando processos...");
 
+        if (client) {
+            try {
+                await client.destroy();
+                console.log("✅ Cliente do WhatsApp destruído.");
+            } catch (error) {
+                console.error("Erro ao destruir cliente do WhatsApp:", error);
+            }
+        }
 
-let whatsappSender = {
-    init: () => startClient()
+        if (client?.pupBrowser) {
+            try {
+                await client.pupBrowser.close();
+                console.log("✅ Puppeteer fechado.");
+            } catch (error) {
+                console.error("Erro ao fechar Puppeteer:", error);
+            }
+        }
+
+        console.log("🚪 Finalizando aplicação...");
+        process.exit(0);
+    });
+
+    let whatsappSender = {
+        init: () => startClient()
+    }
+
+    module.exports = whatsappSender;
 }
-
-module.exports = whatsappSender;
