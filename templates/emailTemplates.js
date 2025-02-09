@@ -65,7 +65,7 @@ let templates = {
                         Acessar o sistema
                     </a>
                 </div>
-                <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #777;">
+                <div style="margin-top: 20px; font-size: 14px; color: #777;">
                     <a href="${process.env.URL_SITE}" target="_blank">
                         <img src="https://lh3.googleusercontent.com/nSELc2XaAc7vhthJSOiS-JPx2iH_PSDocmJhncmQycotrygh1y_i1dRk-nEU1_bG6I1OZvxWjcNvhPaN=w616-h220-rw" style="width: 400px;">
                     </a>
@@ -93,7 +93,7 @@ let templates = {
                         Acessar o sistema
                     </a>
                 </div>
-                <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #777;">
+                <div style="margin-top: 20px; font-size: 14px; color: #777;">
                     <a href="${process.env.URL_SITE}" target="_blank">
                         <img src="https://lh3.googleusercontent.com/nSELc2XaAc7vhthJSOiS-JPx2iH_PSDocmJhncmQycotrygh1y_i1dRk-nEU1_bG6I1OZvxWjcNvhPaN=w616-h220-rw" style="width: 400px;">
                     </a>

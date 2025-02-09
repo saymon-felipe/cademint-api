@@ -87,19 +87,34 @@ async function processarFila() {
             console.log("WhatsApp desconectado. Tentando reconectar...");
             client.emit('qr', 'novo_qr_code_gerado');
         }
-
-        if (global.gc) {
-            console.log("🔄 Liberando memória...");
-            global.gc();
-        } else {
-            console.log("⚠️ Garbage Collector não está habilitado. Inicie o Node com '--expose-gc'");
-        }
     } catch (error) {
         console.error("Erro ao processar fila:", error);
     } finally {
         isProcessing = false;
-        setTimeout(processarFila, 60 * 1000); // Aguarda 1 minuto antes de rodar novamente
+        
+        if (global.gc) {
+            global.gc(); // Força a coleta de lixo
+            console.log("🧹 Garbage Collection executado!");
+        } else {
+            console.warn("⚠️ Garbage Collection não está exposto! Use node --expose-gc.");
+        }
+
+        const memoryUsage = process.memoryUsage().rss / (1024 * 1024); // Em MB
+        console.log(`📊 Uso de memória atual: ${memoryUsage.toFixed(2)} MB`);
+
+        if (memoryUsage > 512) { // Defina um limite seguro
+            console.log("⚠️ Memória alta detectada! Reiniciando WhatsApp...");
+            restartWhatsApp(client);
+        }
+
+        setTimeout(processarFila, 10000); // Aguarda 1 minuto antes de rodar novamente
     }
+}
+
+async function restartWhatsApp(client) {
+    console.log('🚨 WhatsApp desconectado. Reiniciando o cliente...');
+    await client.destroy();
+    startClient(); // Reinicia automaticamente
 }
 
 function startClient() {
@@ -126,7 +141,17 @@ function startClient() {
                     "--no-first-run",
                     "--no-default-browser-check",
                     "--disable-infobars",
-                    "--disable-popup-blocking"
+                    "--disable-popup-blocking",
+                    "--disable-background-timer-throttling",
+                    "--disable-backgrounding-occluded-windows",
+                    "--disable-breakpad",
+                    "--disable-component-update",
+                    "--disable-features=site-per-process,IsolateOrigins",
+                    "--disable-ipc-flooding-protection",
+                    "--disable-renderer-backgrounding",
+                    "--disable-sync",
+                    "--metrics-recording-only",
+                    "--mute-audio",
                 ],
                 headless: "new"
             }
@@ -153,9 +178,7 @@ function startClient() {
         });
 
         client.on('disconnected', async () => {
-            console.log('🚨 WhatsApp desconectado. Reiniciando o cliente...');
-            await client.destroy();
-            startClient(); // Reinicia automaticamente
+            restartWhatsApp(client);
         });
 
         client.initialize();
