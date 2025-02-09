@@ -17,8 +17,20 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         executablePath: puppeteerPath,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        headless: true
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--single-process",
+            "--no-zygote",
+            "--disable-software-rasterizer",  // Reduz uso de GPU em software
+            "--disable-background-networking", // Evita tráfego desnecessário
+            "--disable-breakpad",              // Desativa sistema de crash reports
+            "--disable-extensions",            // Desativa extensões para consumir menos
+            "--disable-sync",                  // Desativa sincronização de contas
+        ],
+        headless: "new"
     }
 });
 
@@ -58,9 +70,13 @@ client.on('ready', () => {
         sendEmails.sendEmail(html, title, from, user_email);
     }
     
-    console.log("")
     processarFila();
-    setInterval(processarFila, 60 * 1000); // 1 minuto de intervalo para o processa fila
+});
+
+client.on('disconnected', async () => {
+    console.log('WhatsApp desconectado. Reiniciando o cliente...');
+    await client.destroy();
+    startClient(); // Reinicia o processo do WhatsApp para evitar vazamento de memória
 });
 
 function buscarMensagensPendentes() {
@@ -96,54 +112,33 @@ async function enviarMensagem(destinatario, mensagem) {
 let isProcessing = false; // Variável de controle para evitar execuções simultâneas
 
 async function processarFila() {
-    if (isProcessing) return; // Se já estiver processando, evita duplicação
-
+    if (isProcessing) return;
     isProcessing = true;
 
-    if (client.info && client.info.pushname) {
-        const mensagens = await buscarMensagensPendentes();
-        
-        for (let msg of mensagens) {
-            // Marca a mensagem como "enviando" antes de enviar
-            await functions.executeSql(
-                `
-                UPDATE whatsapp_fila
-                SET status = "enviando"
-                WHERE id = ?
-                `, [msg.id]
-            );
+    try {
+        if (client.info && client.info.pushname) {
+            const mensagens = await buscarMensagensPendentes();
+            for (let msg of mensagens) {
+                await functions.executeSql(`UPDATE whatsapp_fila SET status = "enviando" WHERE id = ?`, [msg.id]);
 
-            const resultado = await enviarMensagem(msg.destinatario, msg.mensagem);
+                const resultado = await enviarMensagem(msg.destinatario, msg.mensagem);
 
-            if (resultado.sucesso) {
-                await functions.executeSql(
-                    `
-                    UPDATE whatsapp_fila
-                    SET status = "enviado"
-                    WHERE id = ?
-                    `, [msg.id]
-                );
-                console.log(`WHATSAPP FILA: ✅ Mensagem enviada para ${msg.destinatario}`);
-            } else {
-                let novasTentativas = msg.tentativas + 1;
-                let novoStatus = novasTentativas >= 3 ? 'falha' : 'pendente';
+                const novoStatus = resultado.sucesso ? "enviado" : (msg.tentativas + 1 >= 3 ? "falha" : "pendente");
+                await functions.executeSql(`UPDATE whatsapp_fila SET status = ?, tentativas = ? WHERE id = ?`, [novoStatus, msg.tentativas + 1, msg.id]);
 
-                await functions.executeSql(
-                    `
-                    UPDATE whatsapp_fila
-                    SET status = ?, tentativas = ?
-                    WHERE id = ?
-                    `, [novoStatus, novasTentativas, msg.id]
-                );
-                console.log(`WHATSAPP FILA: ❌ Erro ao enviar para ${msg.destinatario}:`, resultado.erro);
+                console.log(`WHATSAPP FILA: ${resultado.sucesso ? '✅' : '❌'} ${msg.destinatario}`);
             }
+        } else {
+            console.log("WhatsApp desconectado. Tentando reconectar...");
+            client.emit('qr', 'novo_qr_code_gerado');
         }
-    } else {
-        console.log("WhatsApp desconectado. Gerando novo QR Code...");
-        client.emit('qr', 'novo_qr_code_gerado');
+    } catch (error) {
+        console.error("Erro ao processar fila:", error);
+    } finally {
+        isProcessing = false;
+        setTimeout(processarFila, 60 * 1000); // Aguarda 1 minuto antes de rodar novamente
     }
-
-    isProcessing = false;
 }
+
 
 module.exports = client;
