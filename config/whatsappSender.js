@@ -7,19 +7,17 @@ const emailTemplates = require("../templates/emailTemplates");
 
 const user_email = "linnubr@gmail.com";
 
+let puppeteerPath = "/app/node_modules/puppeteer-core/.local-chromium/linux-1045629/chrome-linux/chrome"; // Produção
+
+if (process.env.URL_API.indexOf("https://") == -1) { // Está no ambiente de desenvolvimento
+    puppeteerPath = process.cwd() + "/node_modules/puppeteer-core/.local-chromium/win64-1045629/chrome-win/chrome.exe";
+}
+
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
-            "--disable-gpu"
-        ],
+        executablePath: puppeteerPath,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
         headless: true
     }
 });
@@ -60,6 +58,8 @@ client.on('ready', () => {
         sendEmails.sendEmail(html, title, from, user_email);
     }
     
+    console.log("")
+    processarFila();
     setInterval(processarFila, 60 * 1000); // 1 minuto de intervalo para o processa fila
 });
 
