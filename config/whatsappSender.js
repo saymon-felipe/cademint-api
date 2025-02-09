@@ -99,14 +99,6 @@ async function processarFila() {
             console.warn("⚠️ Garbage Collection não está exposto! Use node --expose-gc.");
         }
 
-        const memoryUsage = process.memoryUsage().rss / (1024 * 1024); // Em MB
-        console.log(`📊 Uso de memória atual: ${memoryUsage.toFixed(2)} MB`);
-
-        if (memoryUsage > 512) { // Defina um limite seguro
-            console.log("⚠️ Memória alta detectada! Reiniciando WhatsApp...");
-            restartWhatsApp(client);
-        }
-
         setTimeout(processarFila, 10000); // Aguarda 1 minuto antes de rodar novamente
     }
 }
@@ -117,8 +109,17 @@ async function restartWhatsApp(client) {
     startClient(); // Reinicia automaticamente
 }
 
-function startClient() {
+async function startClient() {
     try {
+        if (client) {
+            console.log("Fechando instância antiga antes de iniciar nova...");
+            try {
+                await client.destroy();
+            } catch (error) {
+                console.error("Erro ao destruir cliente antigo:", error);
+            }
+        }
+
         client = new Client({
             authStrategy: new LocalAuth(),
             puppeteer: {
@@ -130,30 +131,13 @@ function startClient() {
                     "--disable-gpu",
                     "--single-process",
                     "--no-zygote",
-                    "--disable-software-rasterizer",
-                    "--disable-background-networking",
-                    "--disable-breakpad",
-                    "--disable-extensions",
-                    "--disable-sync",
-                    "--disable-features=site-per-process",
-                    "--disable-site-isolation-trials",
-                    "--disable-gl-drawing-for-tests",
-                    "--no-first-run",
-                    "--no-default-browser-check",
-                    "--disable-infobars",
-                    "--disable-popup-blocking",
                     "--disable-background-timer-throttling",
-                    "--disable-backgrounding-occluded-windows",
                     "--disable-breakpad",
-                    "--disable-component-update",
-                    "--disable-features=site-per-process,IsolateOrigins",
-                    "--disable-ipc-flooding-protection",
-                    "--disable-renderer-backgrounding",
-                    "--disable-sync",
-                    "--metrics-recording-only",
-                    "--mute-audio",
+                    "--disable-software-rasterizer",
+                    "--disable-accelerated-2d-canvas",
+                    "--disable-background-networking"
                 ],
-                headless: "new"
+                headless: true
             }
         });
 
