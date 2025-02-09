@@ -13,27 +13,7 @@ if (process.env.URL_API.indexOf("https://") == -1) { // Está no ambiente de des
     puppeteerPath = process.cwd() + "/node_modules/puppeteer-core/.local-chromium/win64-1045629/chrome-win/chrome.exe";
 }
 
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        executablePath: puppeteerPath,
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--single-process",
-            "--no-zygote",
-            "--disable-software-rasterizer",  // Reduz uso de GPU em software
-            "--disable-background-networking", // Evita tráfego desnecessário
-            "--disable-breakpad",              // Desativa sistema de crash reports
-            "--disable-extensions",            // Desativa extensões para consumir menos
-            "--disable-sync",                  // Desativa sincronização de contas
-        ],
-        headless: "new"
-    }
-});
-
+let client;
 let sended_qrCode_email = false;
 
 const processarQRCode = async (qr) => {
@@ -53,31 +33,6 @@ const processarQRCode = async (qr) => {
         console.error('❌ Erro ao converter QR Code para base64:', err);
     }
 };
-
-client.on('qr', (qr) => {
-    console.log('⚡ Gerando QR Code...');
-    processarQRCode(qr);
-});
-
-client.on('ready', () => {
-    let html = emailTemplates.adminWhatsappConected();
-    let title = `ADMIN CADEMINT: Conexão realizada! A conexão com o Whatsapp Sender foi realizada.`;
-    let from = "Ana da Cademint <ana.cademint@gmail.com>";
-
-    sended_qrCode_email = false;
-
-    if (process.env.URL_API.indexOf("https://") != -1) { // Só manda o email de conectado com sucesso quando não estiver no ambiente de desenvolvimento
-        sendEmails.sendEmail(html, title, from, user_email);
-    }
-    
-    processarFila();
-});
-
-client.on('disconnected', async () => {
-    console.log('WhatsApp desconectado. Reiniciando o cliente...');
-    await client.destroy();
-    startClient(); // Reinicia o processo do WhatsApp para evitar vazamento de memória
-});
 
 function buscarMensagensPendentes() {
     return new Promise((resolve, reject) => {
@@ -140,5 +95,64 @@ async function processarFila() {
     }
 }
 
+function startClient() {
+    try {
+        client = new Client({
+            authStrategy: new LocalAuth(),
+            puppeteer: {
+                executablePath: puppeteerPath,
+                args: [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--single-process",
+                    "--no-zygote",
+                    "--disable-software-rasterizer",
+                    "--disable-background-networking",
+                    "--disable-breakpad",
+                    "--disable-extensions",
+                    "--disable-sync",
+                ],
+                headless: "new"
+            }
+        });
 
-module.exports = client;
+        client.on('qr', (qr) => {
+            console.log('⚡ Gerando QR Code...');
+            processarQRCode(qr);
+        });
+
+        client.on('ready', () => {
+            console.log("✅ WhatsApp Client is ready!");
+            let html = emailTemplates.adminWhatsappConected();
+            let title = `ADMIN CADEMINT: Conexão realizada! A conexão com o Whatsapp Sender foi realizada.`;
+            let from = "Ana da Cademint <ana.cademint@gmail.com>";
+
+            sended_qrCode_email = false;
+
+            if (process.env.URL_API.indexOf("https://") != -1) { // Só manda o email de conectado com sucesso quando não estiver no ambiente de desenvolvimento
+                sendEmails.sendEmail(html, title, from, user_email);
+            }
+            
+            processarFila();
+        });
+
+        client.on('disconnected', async () => {
+            console.log('🚨 WhatsApp desconectado. Reiniciando o cliente...');
+            await client.destroy();
+            startClient(); // Reinicia automaticamente
+        });
+
+        client.initialize();
+    } catch (error) {
+        console.error("Erro ao iniciar o cliente:", error);
+    }
+}
+
+
+let whatsappSender = {
+    init: () => startClient()
+}
+
+module.exports = whatsappSender;

@@ -9,9 +9,7 @@ const jobs = require("./custom/jobs");
 const whatsappSender = require("./config/whatsappSender");
 
 jobs.init();
-whatsappSender.initialize().catch(err => {
-    console.error("Erro ao iniciar o WhatsApp:", err);
-});
+whatsappSender.init();
 
 const rotaTarefas = require('./routes/tasks');
 const rotaUsuarios = require('./routes/users');
