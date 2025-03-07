@@ -287,44 +287,29 @@ router.post('/delete_group', login, (req, res, next) => {
 });
 
 router.post("/columns/create", login, (req, res, next) => {
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
-        _projectsService.createColumn(req.body.project_id).then(() => {
-            let response = functions.createResponse("Coluna criada com sucesso", null, "POST", 200);
-            return res.status(200).send(response);
-        }).catch((error) => {
-            return res.status(500).send(error);
-        })
+    _projectsService.createColumn(req.body.project_id).then(() => {
+        let response = functions.createResponse("Coluna criada com sucesso", null, "POST", 200);
+        return res.status(200).send(response);
     }).catch((error) => {
-        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
-        return res.status(401).send(response);
+        return res.status(500).send(error);
     })
 })
 
 router.post("/columns/rename", login, (req, res, next) => {
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
-        _projectsService.renameColumn(req.body.column_id, req.body.name).then(() => {
-            let response = functions.createResponse("Coluna renomeada com sucesso", null, "POST", 200);
-            return res.status(200).send(response);
-        }).catch((error) => {
-            return res.status(500).send(error);
-        })
+    _projectsService.renameColumn(req.body.column_id, req.body.name).then(() => {
+        let response = functions.createResponse("Coluna renomeada com sucesso", null, "POST", 200);
+        return res.status(200).send(response);
     }).catch((error) => {
-        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
-        return res.status(401).send(response);
+        return res.status(500).send(error);
     })
 })
 
 router.post("/columns/delete", login, (req, res, next) => {
-    _projectsService.checkIfGroupOwner(req.usuario.id_usuario, req.body.project_id).then(() => {
-        _projectsService.deleteColumn(req.body.column_id).then(() => {
-            let response = functions.createResponse("Coluna excluída com sucesso", null, "POST", 200);
-            return res.status(200).send(response);
-        }).catch((error) => {
-            return res.status(500).send(error);
-        })
+    _projectsService.deleteColumn(req.body.column_id).then(() => {
+        let response = functions.createResponse("Coluna excluída com sucesso", null, "POST", 200);
+        return res.status(200).send(response);
     }).catch((error) => {
-        let response = functions.createResponse(error || "Permissão negada", null, "POST", 401);
-        return res.status(401).send(response);
+        return res.status(500).send(error);
     })
 })
 
