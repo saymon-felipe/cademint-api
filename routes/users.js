@@ -380,4 +380,13 @@ router.post("/update_preferences", login, (req, res, next) => {
     })
 })
 
+router.get("/return_accounts", login, (req, res, next) => {
+    _userService.returnAccounts(req.usuario.id_usuario).then((results) => {
+        let response = functions.createResponse("Retorno das contas do usuário", results, "GET", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
+});
+
 module.exports = router;

@@ -892,6 +892,26 @@ let userService = {
                 reject(error);
             })
         })
+    },
+    returnAccounts: function (user_id) {
+        return new Promise((resolve, reject) => {
+
+        })
+    },
+    createAccount: function (user_id) {
+        return new Promise((resolve, reject) => {
+            
+        })
+    },
+    editAccount: function (user_id, account_id) {
+        return new Promise((resolve, reject) => {
+            
+        })
+    },
+    excludeAccount: function (user_id, account_id) {
+        return new Promise((resolve, reject) => {
+            
+        })
     }
 }
 
