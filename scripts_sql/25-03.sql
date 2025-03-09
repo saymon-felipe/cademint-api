@@ -17,3 +17,8 @@ CREATE INDEX idx_type ON accounts(type);
 CREATE INDEX idx_name ON accounts(name);
 
 insert into versaodb (versao) values ("25.03.01");
+
+alter table accounts add column user_id int not null;
+alter table accounts add constraint FK_accounts_user_id foreign key (user_id) references users(id_usuario) ON DELETE CASCADE;
+
+insert into versaodb (versao) values ("25.03.02");

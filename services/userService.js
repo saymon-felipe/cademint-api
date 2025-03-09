@@ -8,6 +8,8 @@ const emailTemplates = require("../templates/emailTemplates");
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
+const { encrypt, decrypt } = require('../utils/crypto');
+
 let userService = {
     sendResetPasswordEmail: function (token, userEmail) {
         return new Promise((resolve, reject) => {
@@ -895,24 +897,99 @@ let userService = {
     },
     returnAccounts: function (user_id) {
         return new Promise((resolve, reject) => {
-
+            functions.executeSql(
+                `
+                    SELECT id, user, password, last_access, type, name, image, visible, created_at, updated_at
+                    FROM accounts
+                    WHERE user_id = ?
+                `, [user_id]
+            ).then((results) => {
+                const accounts = results.map(account => ({
+                    ...account,
+                    password: decrypt(account.password) // Descriptografa a senha antes de retornar
+                }));
+                resolve(accounts);
+            }).catch((error) => {
+                reject(error);
+            });
         })
     },
-    createAccount: function (user_id) {
+    createAccount: function (user_id, image, name, password, type, user) {
         return new Promise((resolve, reject) => {
+            const encryptedPassword = encrypt(password);
             
+            functions.executeSql(
+                `
+                    INSERT INTO accounts (user, password, last_access, type, name, image, visible, created_at, updated_at, user_id)
+                    VALUES (?, ?, NOW(), ?, ?, ?, FALSE, NOW(), NOW(), ?)
+                `, [user, encryptedPassword, type, name, image, user_id]
+            ).then(() => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            });
+        });
+    },
+    accessAccount: function (user_id, account_id) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    UPDATE
+                        accounts
+                    SET
+                        last_access = NOW()
+                    WHERE
+                        id = ? 
+                    AND
+                        user_id = ?
+                `, [account_id, user_id]
+            ).then(() => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            });
         })
     },
-    editAccount: function (user_id, account_id) {
+    updateAccount: function (user_id, account_id, image, name, password, type, user) {
         return new Promise((resolve, reject) => {
+            let query = `
+                UPDATE accounts
+                SET 
+                    user = ?, 
+                    name = ?, 
+                    image = ?, 
+                    type = ?, 
+                    password = ?,
+                    updated_at = NOW()
+                WHERE
+                    id = ?
+            `;
             
-        })
+            // Se uma senha for fornecida, ela será criptografada e atualizada também
+            if (password) {
+                const encryptedPassword = encrypt(password);
+                functions.executeSql(
+                    query + ' AND user_id = ?', [user, name, image, type, encryptedPassword, account_id, user_id]
+                ).then(() => {
+                    resolve();
+                }).catch((error) => {
+                    reject(error);
+                });
+            }
+        });
     },
-    excludeAccount: function (user_id, account_id) {
+    deleteAccount: function (user_id, account_id) {
         return new Promise((resolve, reject) => {
-            
-        })
+            functions.executeSql(
+                `DELETE FROM accounts WHERE user_id = ? AND id = ?`, [user_id, account_id]
+            ).then(() => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            });
+        });
     }
+    
 }
 
 module.exports = userService;

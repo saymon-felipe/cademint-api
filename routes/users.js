@@ -389,4 +389,43 @@ router.get("/return_accounts", login, (req, res, next) => {
     })
 });
 
+router.get("/access_account/:account_id", login, (req, res, next) => {
+    _userService.accessAccount(req.usuario.id_usuario, req.params.account_id).then(() => {
+        let response = functions.createResponse("Conta acessada", null, "GET", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
+});
+
+router.post("/create_account", login, (req, res, next) => {
+    _userService.createAccount(req.usuario.id_usuario, req.body.image, req.body.name, req.body.password, req.body.type, req.body.user).then((results) => {
+        let response = functions.createResponse("Conta criada com sucesso", results, "POST", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
+});
+
+router.patch("/update_account/:account_id", login, (req, res, next) => {
+    const { image, name, password, type, user } = req.body;
+
+    _userService.updateAccount(req.usuario.id_usuario, req.params.account_id, image, name, password, type, user).then((results) => {
+        let response = functions.createResponse("Conta atualizada com sucesso", results, "POST", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    });
+});
+
+router.delete("/delete_account/:account_id", login, (req, res, next) => {
+    _userService.deleteAccount(req.usuario.id_usuario, req.params.account_id).then(() => {
+        let response = functions.createResponse("Conta deletada com sucesso", null, "DELETE", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    });
+});
+
+
 module.exports = router;
