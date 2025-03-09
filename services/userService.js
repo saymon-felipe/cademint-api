@@ -388,7 +388,7 @@ let userService = {
             })
         })
     },
-    insertUserAchievement: function (userId, achievementId) {
+    insertUserAchievement: function (userId, achievementName) {
         return new Promise((resolve, reject) => {
             functions.executeSql(
                 `
@@ -396,9 +396,26 @@ let userService = {
                         user_achievements
                         (user_id, achievement_id)
                     VALUES
-                        (?, ?)
-                `, [userId, achievementId]
-            ).then((results) => {
+                        (?, (SELECT id FROM achievements WHERE achievements_name = "${achievementName}"))
+                `, [userId]
+            ).then(() => {
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            })
+        })
+    },
+    insertUserMedal: function (userId, medalName) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(
+                `
+                    INSERT INTO
+                        user_medals
+                        (user_id, medal_id)
+                    VALUES
+                        (?, (SELECT id FROM medals WHERE medal_name = "${medalName}"))
+                `, [userId]
+            ).then(() => {
                 resolve();
             }).catch((error) => {
                 reject(error);
@@ -523,8 +540,10 @@ let userService = {
 
                             let groupName = "Projeto de " + userName;
                             _projectsService.createGroup(groupName, results2.insertId).then(() => {
-                                self.insertUserAchievement(results2.insertId, 1).then(() => {
-                                    resolve(createdUser);
+                                self.insertUserAchievement(results2.insertId, "Novo usuário").then(() => {
+                                    self.insertUserMedal(results2.insertId, "Confiável").then(() => {
+                                        resolve(createdUser);
+                                    });
                                 });
                             }).catch((error3) => {
                                 reject(error3);
