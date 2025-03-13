@@ -921,6 +921,7 @@ let userService = {
                     SELECT id, user, password, last_access, type, name, image, visible, created_at, updated_at
                     FROM accounts
                     WHERE user_id = ?
+                    ORDER BY last_access DESC
                 `, [user_id]
             ).then((results) => {
                 const accounts = results.map(account => ({
