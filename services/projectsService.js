@@ -651,6 +651,8 @@ let taskService = {
                         id: column.id,
                         name: column.name,
                         group_id: column.group_id,
+                        toggleSearchTasks: false,
+                        filteredTasks: [],
                         tasks: []
                     }
                 })
