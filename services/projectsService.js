@@ -652,6 +652,7 @@ let taskService = {
                         name: column.name,
                         group_id: column.group_id,
                         toggleSearchTasks: false,
+                        order: column.order,
                         filteredTasks: [],
                         tasks: []
                     }
@@ -660,6 +661,29 @@ let taskService = {
                 resolve(columns);
             }).catch((error) => {
                 reject(error);
+            })
+        })
+    },
+    reorderColumns: function (reorderedColumns) {
+        return new Promise((resolve, reject) => {
+            let promises = [];
+            let orderedColumns = [];
+
+            orderedColumns = reorderedColumns.map((item, index) => {
+                return {
+                    id: item.id,
+                    order: index
+                }
+            })
+
+            for (let i = 0; i < orderedColumns.length; i++) {
+                let currentColumn = orderedColumns[i];
+
+                promises.push(functions.executeSql(" UPDATE kanban_columns SET \`order\` = ? WHERE id = ? ", [currentColumn.order, currentColumn.id]));
+            }
+
+            Promise.all(promises).then(() => {
+                resolve();
             })
         })
     },

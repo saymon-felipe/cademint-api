@@ -322,6 +322,16 @@ router.post("/columns", login, (req, res, next) => {
     })
 })
 
+router.patch("/columns/order", login, (req, res, next) => {
+    _projectsService.reorderColumns(req.body.reorderedColumns).then(() => {
+        let response = functions.createResponse("Ordenação das colunas alterado com sucesso", null, "PATCH", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
+})
+
+
 router.post("/status", login, (req, res, next) => {
     _projectsService.returnStatus(req.body.project_id, req.body.status).then((results) => {
         let response = functions.createResponse("Retorno do status do projeto", results, "POST", 200);
