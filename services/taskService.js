@@ -241,6 +241,28 @@ let taskService = {
             })
         })
     },
+    removeTaskComment: function (userId, taskId) {
+        return new Promise((resolve, reject) => {
+            functions.executeSql(`
+                DELETE FROM 
+                    task_comments
+                WHERE
+                    id_comentario = ?
+                AND
+                    criador_comentario = ?
+            `, [taskId, userId])
+            .then((results) => {
+                if (results.affectedRows > 0) {
+                    resolve();
+                } else {
+                    reject("Você não tem permissão para excluir esse comentário")
+                }
+            })
+            .catch((error) => {
+                reject(error);
+            })
+        })
+    },
     selectLike: function (taskCommentId, userId) {
         return new Promise((resolve, reject) => {
             functions.executeSql(`

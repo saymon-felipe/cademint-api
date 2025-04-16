@@ -128,6 +128,16 @@ router.post('/task_comment', login, (req, res, next) => {
     })
 });
 
+router.delete('/delete_task_comment/:id_comment', login, (req, res, next) => {
+    _taskService.removeTaskComment(req.usuario.id_usuario, req.params.id_comment).then(() => {
+        let response = functions.createResponse("Comentário excluído com sucesso", null, "DELETE", 200);
+        return res.status(200).send(response);
+    })
+    .catch((error) => {
+        return res.status(500).send(error);
+    })
+});
+
 router.post('/get_task_comment', login, (req, res, next) => {
     _taskService.getTaskComments(req.usuario.id_usuario, req.body.id_task).then((commentsList) => {
         let response = {
