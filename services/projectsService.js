@@ -578,12 +578,18 @@ let taskService = {
         return new Promise((resolve, reject) => {
             functions.executeSql(
                 `
-                    INSERT INTO
-                        kanban_columns
-                        (name, group_id)
-                    VALUES
-                        (?, ?)
-                `, ["Nova coluna", project_id]
+                    INSERT INTO kanban_columns (name, group_id, \`order\`)
+                    VALUES (
+                        ?, ?, 
+                        (
+                            SELECT new_order FROM (
+                            SELECT IFNULL(MAX(\`order\`), -1) + 1 AS new_order
+                            FROM kanban_columns
+                            WHERE group_id = ?
+                            ) AS temp
+                        )
+                    )
+                `, ["Nova coluna", project_id, project_id]
             ).then(() => {
                 resolve();
             }).catch((error) => {
