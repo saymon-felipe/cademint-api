@@ -42,11 +42,11 @@ let taskService = {
                     owner.nome AS user_owner_name
                 FROM
                     os_ambient
-                INNER JOIN 
+                LEFT JOIN 
                     users sponsor
                 ON
                     sponsor.id_usuario = os_ambient.sponsor
-                INNER JOIN
+                LEFT JOIN
                     users owner 
                 ON
                     owner.id_usuario = os_ambient.user_owner
