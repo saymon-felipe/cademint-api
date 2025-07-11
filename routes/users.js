@@ -3,6 +3,7 @@ const router = express.Router();
 const login = require("../middleware/login");
 const uploadConfig = require('../config/upload');
 const _userService = require("../services/userService");
+const _accountCenterService = require("../services/accountCenterService");
 const functions = require("../utils/functions");
 
 router.post("/validate_reset_password_token", (req, res, next) => {
@@ -389,9 +390,23 @@ router.get("/return_accounts", login, (req, res, next) => {
     })
 });
 
-router.get("/access_account/:account_id", login, (req, res, next) => {
-    _userService.accessAccount(req.usuario.id_usuario, req.params.account_id).then(() => {
-        let response = functions.createResponse("Conta acessada", null, "GET", 200);
+router.post("/access_account/reveal/start", login, (req, res, next) => {
+    _accountCenterService.startPasswordRevealSession().then((results) => {
+        let response = functions.createResponse("Iniciando sessão para visualização da senha", results, "POST", 200);
+        return res.status(200).send(response);
+    }).catch((error) => {
+        return res.status(500).send(error);
+    })
+});
+
+router.post('/access_account/reveal/complete', login, (req, res) => {
+    const { accountId, encryptedAesKey, sessionId } = req.body;
+    const userId = req.usuario.id_usuario;
+
+    _accountCenterService.revealPassword(userId, accountId, encryptedAesKey, sessionId).then((results) => {
+        _userService.accessAccount(userId, accountId);
+        
+        let response = functions.createResponse("Retorno da senha criptografada e da chave de descriptografia", results, "POST", 200);
         return res.status(200).send(response);
     }).catch((error) => {
         return res.status(500).send(error);

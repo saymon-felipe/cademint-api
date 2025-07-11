@@ -918,7 +918,7 @@ let userService = {
         return new Promise((resolve, reject) => {
             functions.executeSql(
                 `
-                    SELECT id, user, password, last_access, type, name, image, visible, created_at, updated_at
+                    SELECT id, user, last_access, type, name, image, visible, created_at, updated_at
                     FROM accounts
                     WHERE user_id = ?
                     ORDER BY last_access DESC
@@ -926,7 +926,7 @@ let userService = {
             ).then((results) => {
                 const accounts = results.map(account => ({
                     ...account,
-                    password: decrypt(account.password) // Descriptografa a senha antes de retornar
+                    password: "********"
                 }));
                 resolve(accounts);
             }).catch((error) => {
@@ -985,7 +985,6 @@ let userService = {
                     id = ?
             `;
             
-            // Se uma senha for fornecida, ela será criptografada e atualizada também
             if (password) {
                 const encryptedPassword = encrypt(password);
                 functions.executeSql(
