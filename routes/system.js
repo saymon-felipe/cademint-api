@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 
 // Versão do sistema
-const system_version = "v " + "1.4.3";
+const system_version = "v " + "1.4.4";
 // Nome da plataforma
 const system_name = "Cademint";
 // Criador da plataforma
-const system_owner = "Rabsystems";
+const system_owner = "KSI";
 
 //Sistema em manutenção? true ou false
 const in_maintenance = false;
